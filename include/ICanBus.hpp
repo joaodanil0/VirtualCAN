@@ -16,7 +16,8 @@ enum class CanBusStatus
     WAIT_ERROR,
     READ_ERROR,
     TRANSMISSION_ERROR,
-    FILTER_ERROR
+    FILTER_ERROR,
+    COMMAND_NOT_MATCHED
 };
 
 struct CanFrame

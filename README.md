@@ -53,6 +53,8 @@ Os testes verificam:
 - envio e recepção de um quadro CAN;
 - filtragem por identificador CAN;
 - timeout quando nenhum quadro é recebido.
+- simulação de comando e resposta entre dois módulos;
+- ignorar comandos CAN desconhecidos.
 
 Também é possível executar o binário diretamente:
 
@@ -91,6 +93,44 @@ em `result.frame` e o status em `result.status`, que pode ser `TIMEOUT`,
 não pode ser aplicado. Os quadros aceitos são CAN clássicos com identificador
 padrão e até 8 bytes de dados. Para substituir o transporte, implemente
 `ICanBus` e use a implementação necessária no código que depende da interface.
+
+## Simulador de ECU
+
+`EcuSimulator` modela um módulo que recebe um comando CAN específico e envia
+uma resposta. Ele depende de `ICanBus`, portanto pode funcionar com
+`SocketCanBus` ou com outra implementação compatível.
+
+No exemplo abaixo, o comando esperado tem ID `0x600` e opcode `0x01` no
+primeiro byte. Quando esse comando chega, a ECU responde com o ID `0x650` e
+dois bytes de dados:
+
+```cpp
+#include "EcuSimulator.hpp"
+#include "SocketCanBus.hpp"
+
+#include <chrono>
+
+SocketCanBus ecuBus("vcan0");
+SocketCanBus clientBus("vcan0");
+
+CanFrame response{};
+response.can_id = 0x650;
+response.len = 2;
+response.data[0] = 0xAA;
+response.data[1] = 0x55;
+
+EcuSimulator ecu(ecuBus, 0x600, 0x01, response);
+
+const uint8_t command[] = {0x01, 0x10};
+clientBus.sendFrame(0x600, command, 2);
+
+const auto status = ecu.processOnce(std::chrono::seconds(1));
+```
+
+`processOnce` lê apenas um frame. Se o timeout ou outro erro ocorrer, ele
+propaga o `CanBusStatus` recebido. Se o ID ou opcode não corresponder ao
+comando configurado, retorna `COMMAND_NOT_MATCHED` e não envia resposta. Para
+um comando reconhecido, retorna o status da transmissão da resposta.
 
 ## Licença
 

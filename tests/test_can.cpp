@@ -1,4 +1,5 @@
 
+#include "EcuSimulator.hpp"
 #include "SocketCanBus.hpp"
 
 #include <cassert>
@@ -163,6 +164,73 @@ void testConsecutiveMessages()
     std::cout << "PASS: mensagens consecutivas\n";
 }
 
+void testEcuCommandResponse()
+{
+    SocketCanBus ecuBus("vcan0");
+    SocketCanBus clientBus("vcan0");
+
+    constexpr uint32_t COMMAND_ID = 0x600;
+    constexpr uint8_t COMMAND_CODE = 0x01;
+    constexpr uint32_t RESPONSE_ID = 0x650;
+
+    CanFrame responseFrame{};
+    responseFrame.can_id = RESPONSE_ID;
+    responseFrame.len = 2;
+    responseFrame.data[0] = 0xAA;
+    responseFrame.data[1] = 0x55;
+
+    ICanBus &ecuTransport = ecuBus;
+    EcuSimulator ecu(ecuTransport, COMMAND_ID, COMMAND_CODE, responseFrame);
+
+    assert(clientBus.setFilter(RESPONSE_ID, CAN_STANDARD_ID_MASK) == CanBusStatus::SUCCESS);
+
+    const uint8_t command[] = {COMMAND_CODE, 0x10};
+    assert(clientBus.sendFrame(COMMAND_ID, command, 2) == CanBusStatus::SUCCESS);
+
+    assert(ecu.processOnce(1000ms) == CanBusStatus::SUCCESS);
+
+    auto result = clientBus.receiveFrame(1000ms);
+
+    assert(result.status == CanBusStatus::SUCCESS);
+    assert(result.frame.has_value());
+    assert(result.frame->can_id == RESPONSE_ID);
+    assert(result.frame->len == responseFrame.len);
+    assert(result.frame->data[0] == 0xAA);
+    assert(result.frame->data[1] == 0x55);
+
+    std::cout << "PASS: simulacao de comando e resposta da ECU\n";
+}
+
+void testEcuIgnoresUnknownCommand()
+{
+    SocketCanBus ecuBus("vcan0");
+    SocketCanBus clientBus("vcan0");
+
+    constexpr uint32_t COMMAND_ID = 0x600;
+    constexpr uint8_t COMMAND_CODE = 0x01;
+    constexpr uint32_t RESPONSE_ID = 0x650;
+
+    CanFrame responseFrame{};
+    responseFrame.can_id = RESPONSE_ID;
+    responseFrame.len = 1;
+    responseFrame.data[0] = 0xFF;
+
+    EcuSimulator ecu(ecuBus, COMMAND_ID, COMMAND_CODE, responseFrame);
+
+    assert(clientBus.setFilter(RESPONSE_ID, CAN_STANDARD_ID_MASK) == CanBusStatus::SUCCESS);
+
+    const uint8_t unknownCommand[] = {0x02};
+    assert(clientBus.sendFrame(COMMAND_ID, unknownCommand, 1) == CanBusStatus::SUCCESS);
+
+    assert(ecu.processOnce(1000ms) == CanBusStatus::COMMAND_NOT_MATCHED);
+
+    auto result = clientBus.receiveFrame(100ms);
+    assert(result.status == CanBusStatus::TIMEOUT);
+    assert(!result.frame.has_value());
+
+    std::cout << "PASS: comando desconhecido ignorado pela ECU\n";
+}
+
 int main()
 {
     testSendAndReceive();
@@ -172,6 +240,8 @@ int main()
     testMaximumPayload();
     testFilterMask();
     testConsecutiveMessages();
+    testEcuCommandResponse();
+    testEcuIgnoresUnknownCommand();
 
     std::cout << "Todos os testes passaram!\n";
     return 0;
