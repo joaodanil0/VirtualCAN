@@ -55,12 +55,12 @@ CanBus::~CanBus()
     }
 }
 
-bool CanBus::sendFrame(uint32_t id, const uint8_t *data, uint8_t length)
+CanBusStatus CanBus::sendFrame(uint32_t id, const uint8_t *data, uint8_t length)
 {
     // Este exemplo aceita somente CAN classico com ID padrao.
     if (id > CAN_SFF_MASK || length > CAN_MAX_DLEN || (length > 0 && data == nullptr))
     {
-        return false;
+        return CanBusStatus::INVALID_ARGUMENT;
     }
 
     can_frame frame{};
@@ -74,10 +74,15 @@ bool CanBus::sendFrame(uint32_t id, const uint8_t *data, uint8_t length)
 
     const auto written = write(socketFd_, &frame, sizeof(frame));
 
-    return written == sizeof(frame);
+    if (written == sizeof(frame))
+    {
+        return CanBusStatus::SUCCESS;
+    }
+
+    return CanBusStatus::TRANSMISSION_ERROR;
 }
 
-std::optional<can_frame> CanBus::receiveFrame(std::chrono::milliseconds timeout)
+CanBusReceiveResult CanBus::receiveFrame(std::chrono::milliseconds timeout)
 {
     pollfd pfd{};
     pfd.fd = socketFd_;
@@ -85,9 +90,19 @@ std::optional<can_frame> CanBus::receiveFrame(std::chrono::milliseconds timeout)
 
     const int ready = poll(&pfd, 1, static_cast<int>(timeout.count()));
 
-    if (ready <= 0 || !(pfd.revents & POLLIN))
+    if (ready == 0)
     {
-        return std::nullopt;
+        return {{}, CanBusStatus::TIMEOUT};
+    }
+
+    if (ready < 0)
+    {
+        return {{}, CanBusStatus::WAIT_ERROR};
+    }
+
+    if (!(pfd.revents & POLLIN))
+    {
+        return {{}, CanBusStatus::READ_ERROR};
     }
 
     can_frame frame{};
@@ -96,22 +111,19 @@ std::optional<can_frame> CanBus::receiveFrame(std::chrono::milliseconds timeout)
 
     if (received != sizeof(frame))
     {
-        return std::nullopt;
+        return {{}, CanBusStatus::READ_ERROR};
     }
 
-    return frame;
+    return {frame, CanBusStatus::SUCCESS};
 }
 
-bool CanBus::setFilter(uint32_t id, uint32_t mask)
+CanBusStatus CanBus::setFilter(uint32_t id, uint32_t mask)
 {
     can_filter filter{};
     filter.can_id = id;
     filter.can_mask = mask;
 
-    return setsockopt(
-               socketFd_,
-               SOL_CAN_RAW,
-               CAN_RAW_FILTER,
-               &filter,
-               sizeof(filter)) == 0;
+    const bool result = setsockopt(socketFd_, SOL_CAN_RAW, CAN_RAW_FILTER, &filter, sizeof(filter)) == 0;
+
+    return result ? CanBusStatus::SUCCESS : CanBusStatus::FILTER_ERROR;
 }

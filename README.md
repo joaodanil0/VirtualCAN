@@ -75,19 +75,21 @@ int main()
 	CanBus bus("vcan0");
 
 	const std::uint8_t payload[] = {0x11, 0x22, 0x33};
-	bus.sendFrame(0x123, payload, 3);
+	const auto sendStatus = bus.sendFrame(0x123, payload, 3);
 
-	auto frame = bus.receiveFrame(std::chrono::milliseconds(1000));
-	if (frame.has_value()) {
-		// frame->can_id identifica o quadro e frame->data contém os dados.
+	auto result = bus.receiveFrame(std::chrono::milliseconds(1000));
+	if (sendStatus == CanBusStatus::SUCCESS) {
+		// result.frame->can_id identifica o quadro recebido.
 	}
 }
 ```
 
-`sendFrame` aceita quadros CAN clássicos com identificador padrão e até 8
-bytes de dados. `receiveFrame` retorna um `std::optional<can_frame>` vazio
-quando o timeout expira ou a leitura falha. `setFilter` configura um filtro
-de identificador no socket.
+`sendFrame` retorna `CanBusStatus::SUCCESS` em caso de sucesso e diferencia
+argumentos inválidos de falhas de transmissão. `receiveFrame` retorna o quadro
+em `result.frame` e o status em `result.status`, que pode ser `TIMEOUT`,
+`WAIT_ERROR` ou `READ_ERROR`. `setFilter` retorna `FILTER_ERROR` quando o filtro
+não pode ser aplicado. Os quadros aceitos são CAN clássicos com identificador
+padrão e até 8 bytes de dados.
 
 ## Licença
 

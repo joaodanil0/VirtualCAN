@@ -7,6 +7,23 @@
 #include <optional>
 #include <string>
 
+enum class CanBusStatus
+{
+    SUCCESS,
+    INVALID_ARGUMENT,
+    TIMEOUT,
+    WAIT_ERROR,
+    READ_ERROR,
+    TRANSMISSION_ERROR,
+    FILTER_ERROR
+};
+
+struct CanBusReceiveResult
+{
+    std::optional<can_frame> frame;
+    CanBusStatus status = CanBusStatus::SUCCESS;
+};
+
 class CanBus {
 
 public:
@@ -16,9 +33,9 @@ public:
     CanBus(const CanBus&) = delete;
     CanBus& operator=(const CanBus&) = delete;
 
-    bool sendFrame(uint32_t id, const uint8_t* data, uint8_t length);
-    bool setFilter(uint32_t id, uint32_t mask);
-    std::optional<can_frame> receiveFrame(std::chrono::milliseconds timeout);
+    CanBusStatus sendFrame(uint32_t id, const uint8_t *data, uint8_t length);
+    CanBusStatus setFilter(uint32_t id, uint32_t mask);
+    CanBusReceiveResult receiveFrame(std::chrono::milliseconds timeout);
 
 private:
     int socketFd_ = -1;
