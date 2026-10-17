@@ -1,10 +1,8 @@
-
-#include "CanBus.hpp"
+#include "SocketCanBus.hpp"
 
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
-#include <cerrno>
 
 #include <linux/can/raw.h>
 #include <net/if.h>
@@ -13,7 +11,7 @@
 #include <unistd.h>
 #include <poll.h>
 
-CanBus::CanBus(const std::string &interfaceName)
+SocketCanBus::SocketCanBus(const std::string& interfaceName)
 {
     socketFd_ = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 
@@ -36,10 +34,7 @@ CanBus::CanBus(const std::string &interfaceName)
     addr.can_family = AF_CAN;
     addr.can_ifindex = ifr.ifr_ifindex;
 
-    if (bind(
-            socketFd_,
-            reinterpret_cast<sockaddr *>(&addr),
-            sizeof(addr)) < 0)
+    if (bind(socketFd_, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) < 0)
     {
         close(socketFd_);
         socketFd_ = -1;
@@ -47,7 +42,7 @@ CanBus::CanBus(const std::string &interfaceName)
     }
 }
 
-CanBus::~CanBus()
+SocketCanBus::~SocketCanBus()
 {
     if (socketFd_ >= 0)
     {
@@ -55,10 +50,9 @@ CanBus::~CanBus()
     }
 }
 
-CanBusStatus CanBus::sendFrame(uint32_t id, const uint8_t *data, uint8_t length)
+CanBusStatus SocketCanBus::sendFrame(uint32_t id, const uint8_t* data, uint8_t length)
 {
-    // Este exemplo aceita somente CAN classico com ID padrao.
-    if (id > CAN_SFF_MASK || length > CAN_MAX_DLEN || (length > 0 && data == nullptr))
+    if (id > CAN_SFF_MASK || length > CAN_CLASSIC_MAX_DATA_LENGTH || (length > 0 && data == nullptr))
     {
         return CanBusStatus::INVALID_ARGUMENT;
     }
@@ -82,7 +76,7 @@ CanBusStatus CanBus::sendFrame(uint32_t id, const uint8_t *data, uint8_t length)
     return CanBusStatus::TRANSMISSION_ERROR;
 }
 
-CanBusReceiveResult CanBus::receiveFrame(std::chrono::milliseconds timeout)
+CanBusReceiveResult SocketCanBus::receiveFrame(std::chrono::milliseconds timeout)
 {
     pollfd pfd{};
     pfd.fd = socketFd_;
@@ -106,7 +100,6 @@ CanBusReceiveResult CanBus::receiveFrame(std::chrono::milliseconds timeout)
     }
 
     can_frame frame{};
-
     const auto received = read(socketFd_, &frame, sizeof(frame));
 
     if (received != sizeof(frame))
@@ -114,10 +107,15 @@ CanBusReceiveResult CanBus::receiveFrame(std::chrono::milliseconds timeout)
         return {{}, CanBusStatus::READ_ERROR};
     }
 
-    return {frame, CanBusStatus::SUCCESS};
+    CanFrame receivedFrame{};
+    receivedFrame.can_id = frame.can_id;
+    receivedFrame.len = frame.len;
+    std::copy(frame.data, frame.data + frame.len, receivedFrame.data.begin());
+
+    return {receivedFrame, CanBusStatus::SUCCESS};
 }
 
-CanBusStatus CanBus::setFilter(uint32_t id, uint32_t mask)
+CanBusStatus SocketCanBus::setFilter(uint32_t id, uint32_t mask)
 {
     can_filter filter{};
     filter.can_id = id;

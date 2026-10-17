@@ -1,8 +1,8 @@
 # Virtual CAN
 
-Biblioteca C++17 para comunicação com interfaces CAN do Linux usando sockets
-CAN RAW. O projeto inclui uma implementação de `CanBus` e testes executados
-contra uma interface CAN virtual (`vcan0`).
+Biblioteca C++17 para comunicação com interfaces CAN usando a interface
+`ICanBus`. O projeto inclui a implementação SocketCAN para Linux,
+`SocketCanBus`, e testes executados contra uma interface CAN virtual (`vcan0`).
 
 ## Requisitos
 
@@ -62,17 +62,17 @@ Também é possível executar o binário diretamente:
 
 ## Uso da biblioteca
 
-Inclua `CanBus.hpp` e vincule seu programa à biblioteca `canbus`:
+Inclua `SocketCanBus.hpp` e vincule seu programa à biblioteca `canbus`:
 
 ```cpp
-#include "CanBus.hpp"
+#include "SocketCanBus.hpp"
 
 #include <chrono>
 #include <cstdint>
 
 int main()
 {
-	CanBus bus("vcan0");
+	SocketCanBus bus("vcan0");
 
 	const std::uint8_t payload[] = {0x11, 0x22, 0x33};
 	const auto sendStatus = bus.sendFrame(0x123, payload, 3);
@@ -89,7 +89,8 @@ argumentos inválidos de falhas de transmissão. `receiveFrame` retorna o quadro
 em `result.frame` e o status em `result.status`, que pode ser `TIMEOUT`,
 `WAIT_ERROR` ou `READ_ERROR`. `setFilter` retorna `FILTER_ERROR` quando o filtro
 não pode ser aplicado. Os quadros aceitos são CAN clássicos com identificador
-padrão e até 8 bytes de dados.
+padrão e até 8 bytes de dados. Para substituir o transporte, implemente
+`ICanBus` e use a implementação necessária no código que depende da interface.
 
 ## Licença
 

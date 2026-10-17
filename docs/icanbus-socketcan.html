@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ICanBus e SocketCanBus</title>
+    <style>
+        :root {
+            --ink: #17212b;
+            --muted: #5d6b78;
+            --paper: #f4f7f8;
+            --panel: #ffffff;
+            --line: #d9e2e6;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #d66b2d;
+            --code: #17232b;
+            --code-ink: #e8f0f2;
+            --shadow: 0 16px 45px rgba(20, 48, 58, 0.09);
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            color: var(--ink);
+            background:
+                radial-gradient(circle at 85% 0%, rgba(8, 127, 140, 0.13), transparent 28rem),
+                linear-gradient(135deg, #f4f7f8 0%, #e9f1f0 100%);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+
+        .shell { max-width: 1120px; margin: 0 auto; padding: 30px 22px 70px; }
+        header { padding: 50px 0 36px; max-width: 800px; }
+        .eyebrow {
+            color: var(--teal-dark);
+            font: 700 0.78rem/1.2 "Trebuchet MS", sans-serif;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+        }
+        h1, h2, h3 { line-height: 1.15; margin: 0 0 16px; }
+        h1 { font: 700 clamp(2.5rem, 6vw, 5rem)/0.98 "Trebuchet MS", sans-serif; letter-spacing: -0.04em; }
+        h2 { font: 700 2rem/1.1 "Trebuchet MS", sans-serif; margin-top: 8px; }
+        h3 { font: 700 1.2rem/1.2 "Trebuchet MS", sans-serif; color: var(--teal-dark); }
+        p { margin: 0 0 16px; }
+        .lead { color: var(--muted); font-size: 1.2rem; max-width: 720px; }
+        .tag {
+            display: inline-block;
+            margin-top: 18px;
+            padding: 7px 11px;
+            color: #fff;
+            background: var(--orange);
+            font: 700 0.78rem "Trebuchet MS", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        section { margin-top: 48px; }
+        .section-intro { max-width: 760px; color: var(--muted); }
+        .panel {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            padding: 25px;
+        }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { background: var(--panel); border: 1px solid var(--line); padding: 21px; }
+        .card p:last-child { margin-bottom: 0; }
+        .card strong { color: var(--teal-dark); }
+
+        .architecture {
+            display: grid;
+            grid-template-columns: 1fr 70px 1fr;
+            align-items: stretch;
+            gap: 14px;
+            margin-top: 22px;
+        }
+        .box {
+            min-height: 180px;
+            border: 2px solid var(--teal);
+            background: #f8ffff;
+            padding: 20px;
+        }
+        .box.concrete { border-color: var(--orange); background: #fffaf6; }
+        .box h3 { margin-bottom: 8px; }
+        .box small { color: var(--muted); }
+        .arrow { display: grid; place-items: center; color: var(--teal-dark); font: 700 2rem sans-serif; }
+        .arrow span { display: block; font-size: 0.7rem; text-align: center; line-height: 1.2; }
+
+        .flow { display: grid; gap: 12px; margin-top: 20px; }
+        .step { display: grid; grid-template-columns: 52px 1fr; gap: 15px; align-items: start; }
+        .number {
+            display: grid; place-items: center;
+            width: 42px; height: 42px;
+            color: white; background: var(--teal);
+            font: 700 1.1rem "Trebuchet MS", sans-serif;
+        }
+        .step h3 { margin: 3px 0 4px; }
+        .step p { margin: 0; color: var(--muted); }
+
+        pre {
+            overflow-x: auto;
+            margin: 18px 0 0;
+            padding: 19px;
+            color: var(--code-ink);
+            background: var(--code);
+            border-left: 4px solid var(--orange);
+            font: 0.88rem/1.55 "DejaVu Sans Mono", Consolas, monospace;
+        }
+        code { font-family: "DejaVu Sans Mono", Consolas, monospace; font-size: 0.92em; }
+        :not(pre) > code { color: var(--teal-dark); background: #e6f2f1; padding: 2px 5px; }
+        .keyword { color: #7dd3c7; }
+        .type { color: #ffd18a; }
+        .comment { color: #94a9ae; }
+        .string { color: #f6a77b; }
+
+        .callout { border-left: 5px solid var(--orange); background: #fff8f2; padding: 18px 21px; margin-top: 18px; }
+        .callout strong { color: #9b481e; }
+        ul { margin: 10px 0 0; padding-left: 22px; }
+        li { margin: 6px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 18px; background: white; }
+        th, td { border: 1px solid var(--line); padding: 12px 14px; text-align: left; vertical-align: top; }
+        th { color: white; background: var(--teal-dark); font: 700 0.85rem "Trebuchet MS", sans-serif; }
+        td:first-child { white-space: nowrap; color: var(--teal-dark); font-weight: 700; }
+        footer { margin-top: 55px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+
+        @media (max-width: 760px) {
+            .shell { padding-inline: 16px; }
+            .grid, .grid.three, .architecture { grid-template-columns: 1fr; }
+            .arrow { min-height: 38px; transform: rotate(90deg); }
+            .box { min-height: auto; }
+            h1 { font-size: 3rem; }
+            .panel, .card { padding: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <main class="shell">
+        <header>
+            <div class="eyebrow">Arquitetura do projeto Virtual CAN</div>
+            <h1>ICanBus e SocketCanBus</h1>
+            <p class="lead">
+                Como uma interface C++ separa o contrato de comunicação da tecnologia
+                usada para transportar os frames CAN.
+            </p>
+            <span class="tag">Abstração + polimorfismo</span>
+        </header>
+
+        <section>
+            <h2>A ideia central</h2>
+            <p class="section-intro">
+                O código que precisa enviar ou receber mensagens CAN não deveria
+                precisar saber se o transporte é um socket Linux, um simulador, um
+                driver de hardware ou um mecanismo de testes. Essa decisão pertence
+                à implementação concreta. No projeto, essa divisão é feita entre
+                <code>ICanBus</code> e <code>SocketCanBus</code>.
+            </p>
+            <div class="architecture">
+                <div class="box">
+                    <h3>ICanBus</h3>
+                    <small>Contrato independente de transporte</small>
+                    <ul>
+                        <li>Declara <code>sendFrame</code>.</li>
+                        <li>Declara <code>receiveFrame</code>.</li>
+                        <li>Declara <code>setFilter</code>.</li>
+                        <li>Define os tipos e status comuns.</li>
+                    </ul>
+                </div>
+                <div class="arrow">→<span>implementa</span></div>
+                <div class="box concrete">
+                    <h3>SocketCanBus</h3>
+                    <small>Transporte concreto para Linux</small>
+                    <ul>
+                        <li>Abre um socket <code>PF_CAN</code>.</li>
+                        <li>Localiza a interface com <code>ioctl</code>.</li>
+                        <li>Usa <code>read</code>, <code>write</code> e <code>poll</code>.</li>
+                        <li>Converte entre <code>CanFrame</code> e <code>can_frame</code>.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Por que separar?</h2>
+            <div class="grid three">
+                <article class="card">
+                    <h3>Menos acoplamento</h3>
+                    <p>O restante do programa depende de operações CAN, não de headers Linux como <code>&lt;linux/can.h&gt;</code> ou de descritores de socket.</p>
+                </article>
+                <article class="card">
+                    <h3>Troca de transporte</h3>
+                    <p>Uma nova implementação, como <code>MockCanBus</code> ou uma implementação para outro sistema, pode obedecer ao mesmo contrato.</p>
+                </article>
+                <article class="card">
+                    <h3>Testes mais simples</h3>
+                    <p>O código cliente pode receber uma implementação falsa e testar seu comportamento sem criar uma interface <code>vcan0</code>.</p>
+                </article>
+            </div>
+            <div class="callout">
+                <strong>Princípio usado:</strong> o código de alto nível depende de uma abstração;
+                detalhes de infraestrutura dependem dessa abstração. É uma aplicação prática da
+                inversão de dependência.
+            </div>
+        </section>
+
+        <section>
+            <h2>O contrato em C++</h2>
+            <p class="section-intro">
+                Em C++, uma classe com pelo menos uma função virtual pura é uma classe
+                abstrata. Ela descreve o que uma implementação deve fazer, mas não
+                fornece uma implementação obrigatória para cada operação.
+            </p>
+            <pre><span class="keyword">class</span> <span class="type">ICanBus</span>
+{
+<span class="keyword">public</span>:
+    <span class="keyword">virtual</span> ~ICanBus() = <span class="keyword">default</span>;
+
+    <span class="keyword">virtual</span> CanBusStatus sendFrame(uint32_t id, <span class="keyword">const</span> uint8_t* data, uint8_t length) = 0;
+
+    <span class="keyword">virtual</span> CanBusReceiveResult receiveFrame(std::chrono::milliseconds timeout) = 0;
+};</pre>
+            <div class="grid" style="margin-top: 18px">
+                <article class="card">
+                    <h3><code>virtual</code></h3>
+                    <p>Permite que uma chamada feita através de uma referência ou ponteiro para <code>ICanBus</code> chegue à implementação real do objeto.</p>
+                </article>
+                <article class="card">
+                    <h3><code>= 0</code></h3>
+                    <p>Declara uma função virtual pura. Como consequência, <code>ICanBus</code> não pode ser instanciada diretamente.</p>
+                </article>
+                <article class="card">
+                    <h3><code>override</code></h3>
+                    <p>Em <code>SocketCanBus</code>, confirma ao compilador que o método está substituindo uma função virtual da interface.</p>
+                </article>
+                <article class="card">
+                    <h3>Destrutor virtual</h3>
+                    <p>Garante a destruição correta quando um objeto concreto é liberado através de um ponteiro para a interface.</p>
+                </article>
+            </div>
+        </section>
+
+        <section>
+            <h2>A implementação concreta</h2>
+            <p class="section-intro">
+                <code>SocketCanBus</code> herda publicamente de <code>ICanBus</code>. Isso
+                significa que um objeto <code>SocketCanBus</code> pode ser usado em
+                qualquer lugar que aceite uma referência ou ponteiro para
+                <code>ICanBus</code>.
+            </p>
+            <pre><span class="keyword">class</span> <span class="type">SocketCanBus</span> : <span class="keyword">public</span> ICanBus
+{
+<span class="keyword">public</span>:
+    <span class="keyword">explicit</span> SocketCanBus(<span class="keyword">const</span> std::string&amp; interfaceName);
+
+    CanBusStatus sendFrame(...) <span class="keyword">override</span>;
+    CanBusStatus setFilter(...) <span class="keyword">override</span>;
+    CanBusReceiveResult receiveFrame(...) <span class="keyword">override</span>;
+
+<span class="keyword">private</span>:
+    <span class="keyword">int</span> socketFd_ = -1;
+};</pre>
+            <p>
+                O membro <code>socketFd_</code> é um detalhe exclusivo do transporte
+                SocketCAN. A interface não precisa conhecer esse descritor, nem saber
+                que a implementação chama <code>bind</code> ou <code>ioctl</code>.
+            </p>
+        </section>
+
+        <section>
+            <h2>Como o polimorfismo acontece</h2>
+            <p>
+                O tipo estático de uma variável pode ser <code>ICanBus</code>, enquanto
+                o objeto concreto criado em tempo de execução é um
+                <code>SocketCanBus</code>. A função virtual seleciona a implementação
+                correta.
+            </p>
+            <pre><span class="keyword">void</span> runCommunication(<span class="type">ICanBus</span>&amp; bus)
+{
+    <span class="keyword">const</span> uint8_t payload[] = {0x11, 0x22, 0x33};
+
+    <span class="keyword">auto</span> status = bus.sendFrame(0x123, payload, 3);
+    <span class="keyword">auto</span> result = bus.receiveFrame(std::chrono::milliseconds(1000));
+
+    <span class="keyword">if</span> (status == CanBusStatus::SUCCESS &amp;&amp;
+        result.status == CanBusStatus::SUCCESS)
+    {
+        <span class="comment">// O código usa o contrato, não o SocketCAN.</span>
+        <span class="keyword">auto</span> id = result.frame-&gt;can_id;
+    }
+}
+
+SocketCanBus linuxBus("vcan0");
+runCommunication(linuxBus);</pre>
+            <p>
+                <code>runCommunication</code> não recebe <code>SocketCanBus&amp;</code>;
+                recebe <code>ICanBus&amp;</code>. Portanto, uma implementação diferente
+                pode ser passada sem modificar essa função.
+            </p>
+        </section>
+
+        <section>
+            <h2>Fluxo de uma transmissão</h2>
+            <div class="flow">
+                <div class="step"><div class="number">1</div><div><h3>Cliente chama a interface</h3><p>O cliente executa <code>bus.sendFrame(id, data, length)</code> usando apenas o contrato <code>ICanBus</code>.</p></div></div>
+                <div class="step"><div class="number">2</div><div><h3>Despacho virtual</h3><p>Como o objeto real é <code>SocketCanBus</code>, C++ chama <code>SocketCanBus::sendFrame</code>.</p></div></div>
+                <div class="step"><div class="number">3</div><div><h3>Validação</h3><p>A implementação verifica ID padrão, tamanho máximo de 8 bytes e ponteiro de dados.</p></div></div>
+                <div class="step"><div class="number">4</div><div><h3>Conversão de formato</h3><p>Os dados do contrato são copiados para uma estrutura Linux <code>can_frame</code>.</p></div></div>
+                <div class="step"><div class="number">5</div><div><h3>Operação do sistema</h3><p><code>write(socketFd_, &amp;frame, sizeof(frame))</code> entrega o frame ao SocketCAN.</p></div></div>
+                <div class="step"><div class="number">6</div><div><h3>Status uniforme</h3><p>A implementação traduz o resultado para <code>CanBusStatus::SUCCESS</code> ou <code>TRANSMISSION_ERROR</code>.</p></div></div>
+            </div>
+        </section>
+
+        <section>
+            <h2>Fluxo de recepção</h2>
+            <div class="grid">
+                <article class="card">
+                    <h3>Antes da leitura</h3>
+                    <p><code>poll</code> aguarda até que o socket tenha dados ou até o timeout. Retorno zero vira <code>TIMEOUT</code>; erro do sistema vira <code>WAIT_ERROR</code>.</p>
+                </article>
+                <article class="card">
+                    <h3>Depois da leitura</h3>
+                    <p><code>read</code> preenche um <code>can_frame</code>. Se o tamanho estiver incorreto, o status vira <code>READ_ERROR</code>.</p>
+                </article>
+                <article class="card">
+                    <h3>Fronteira de tipos</h3>
+                    <p>O frame Linux é convertido para <code>CanFrame</code>, que usa <code>std::array</code> e não expõe headers específicos do kernel.</p>
+                </article>
+                <article class="card">
+                    <h3>Resultado composto</h3>
+                    <p><code>CanBusReceiveResult</code> transporta o status e um <code>std::optional&lt;CanFrame&gt;</code>. Em erro, o frame fica vazio.</p>
+                </article>
+            </div>
+        </section>
+
+        <section>
+            <h2>Tipos e responsabilidades</h2>
+            <table>
+                <thead><tr><th>Elemento</th><th>Responsabilidade</th><th>Conhece Linux?</th></tr></thead>
+                <tbody>
+                    <tr><td>ICanBus</td><td>Define operações que qualquer transporte CAN deve oferecer.</td><td>Não</td></tr>
+                    <tr><td>CanFrame</td><td>Representa os dados comuns de um frame CAN clássico.</td><td>Não</td></tr>
+                    <tr><td>CanBusStatus</td><td>Padroniza sucesso, timeout e falhas.</td><td>Não</td></tr>
+                    <tr><td>SocketCanBus</td><td>Implementa o contrato usando SocketCAN.</td><td>Sim</td></tr>
+                    <tr><td>can_frame</td><td>Formato definido pelos headers do kernel Linux.</td><td>Sim</td></tr>
+                </tbody>
+            </table>
+        </section>
+
+        <section>
+            <h2>Como criar outro transporte</h2>
+            <p>
+                Uma implementação alternativa herda de <code>ICanBus</code> e implementa
+                os três métodos. Ela pode usar memória, uma fila, um driver diferente ou
+                um simulador. O código cliente continua igual.
+            </p>
+            <pre><span class="keyword">class</span> <span class="type">MockCanBus</span> : <span class="keyword">public</span> ICanBus
+{
+<span class="keyword">public</span>:
+    CanBusStatus sendFrame(uint32_t id, <span class="keyword">const</span> uint8_t* data, uint8_t length) <span class="keyword">override</span>;
+
+    CanBusStatus setFilter(uint32_t id, uint32_t mask) <span class="keyword">override</span>;
+
+    CanBusReceiveResult receiveFrame(std::chrono::milliseconds timeout) <span class="keyword">override</span>;
+};</pre>
+            <div class="callout">
+                <strong>Regra prática:</strong> o consumidor deve depender de
+                <code>ICanBus</code>; somente a composição da aplicação deve decidir
+                se cria <code>SocketCanBus</code>, <code>MockCanBus</code> ou outro transporte.
+            </div>
+        </section>
+
+        <section>
+            <h2>O que essa separação não faz</h2>
+            <ul>
+                <li>Não transforma automaticamente todos os transports em compatíveis: cada um ainda precisa implementar o contrato.</li>
+                <li>Não remove a necessidade de tratar <code>CanBusStatus</code>; a interface apenas padroniza os resultados.</li>
+                <li>Não permite instanciar <code>ICanBus</code>, porque ela é uma classe abstrata.</li>
+                <li>Não impede que uma implementação concreta tenha detalhes próprios, como um descritor de arquivo.</li>
+            </ul>
+        </section>
+
+        <footer>
+            Documento baseado nos arquivos <code>ICanBus.hpp</code>,
+            <code>SocketCanBus.hpp</code> e <code>SocketCanBus.cpp</code> do projeto Virtual CAN.
+        </footer>
+    </main>
+</body>
+</html>
