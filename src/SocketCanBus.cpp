@@ -76,6 +76,27 @@ CanBusStatus SocketCanBus::sendFrame(uint32_t id, const uint8_t* data, uint8_t l
     return CanBusStatus::TRANSMISSION_ERROR;
 }
 
+CanBusStatus SocketCanBus::sendRemoteFrame(uint32_t id, uint8_t length)
+{
+    if (id > CAN_SFF_MASK || length > CAN_CLASSIC_MAX_DATA_LENGTH)
+    {
+        return CanBusStatus::INVALID_ARGUMENT;
+    }
+
+    can_frame frame{};
+    frame.can_id = id | CAN_RTR_FLAG;
+    frame.can_dlc = length;
+
+    const auto written = write(socketFd_, &frame, sizeof(frame));
+
+    if (written == sizeof(frame))
+    {
+        return CanBusStatus::SUCCESS;
+    }
+
+    return CanBusStatus::TRANSMISSION_ERROR;
+}
+
 CanBusReceiveResult SocketCanBus::receiveFrame(std::chrono::milliseconds timeout)
 {
     pollfd pfd{};

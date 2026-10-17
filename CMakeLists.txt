@@ -32,6 +32,10 @@ add_executable(vehicle_infotainment_fd examples/vehicle_infotainment_fd.cpp)
 
 target_link_libraries(vehicle_infotainment_fd PRIVATE canbus)
 
+add_executable(arduino_rtr examples/arduino_rtr.cpp)
+
+target_link_libraries(arduino_rtr PRIVATE canbus)
+
 enable_testing()
 
 add_test(NAME can_tests COMMAND test_can)

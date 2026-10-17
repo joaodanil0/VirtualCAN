@@ -42,6 +42,7 @@ public:
     ICanBus& operator=(const ICanBus&) = delete;
 
     virtual CanBusStatus sendFrame(uint32_t id, const uint8_t* data, uint8_t length) = 0;
+    virtual CanBusStatus sendRemoteFrame(uint32_t id, uint8_t length) = 0;
     virtual CanBusStatus setFilter(uint32_t id, uint32_t mask) = 0;
     virtual CanBusReceiveResult receiveFrame(std::chrono::milliseconds timeout) = 0;
 

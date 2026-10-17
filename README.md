@@ -76,7 +76,7 @@ cmake --build build
 O primeiro comando lê o `CMakeLists.txt` e gera os arquivos de build. O
 segundo compila a biblioteca `canbus`, os executáveis de teste `test_can` e
 `test_canfd`, além dos exemplos `vehicle_infotainment` e
-`vehicle_infotainment_fd`.
+`vehicle_infotainment_fd` e `arduino_rtr`.
 
 ## Testes
 
@@ -99,6 +99,40 @@ Também é possível executar o binário diretamente:
 ```shell
 ./build/test_can
 ```
+
+## Monitoramento com candump
+
+O utilitário `candump`, do pacote `can-utils`, permite observar os frames
+diretamente no terminal enquanto os exemplos ou testes estão em execução.
+
+Instale o pacote, caso ainda não esteja disponível:
+
+```shell
+sudo apt install can-utils
+```
+
+Em um terminal separado, monitore a interface CAN clássica:
+
+```shell
+candump vcan0
+```
+
+Para monitorar a interface CAN FD:
+
+```shell
+candump vcanfd0
+```
+
+É possível filtrar por um identificador específico. Por exemplo, para observar
+os frames do exemplo Arduino/RTR no ID `0x12`:
+
+```shell
+candump vcan0,0x12:0x7FF
+```
+
+O `candump` exibe o ID, o DLC e os bytes do payload. Frames RTR aparecem com a
+indicação de frame remoto, permitindo diferenciar a mensagem `EV-ENGNR` do
+pedido RTR com DLC `3`.
 
 ## Uso da biblioteca
 
@@ -233,6 +267,32 @@ Com a interface `vcanfd0` ativa, execute:
 O protocolo permanece uma requisição com opcode `0x01` e uma resposta contendo
 velocidade e temperatura, mas o transporte usa `CanFdFrame` e suporta payloads
 de até 64 bytes.
+
+### Exemplo Arduino com frame RTR
+
+O executável `arduino_rtr` simula um Arduino enviando a mensagem de dados
+`EV-ENGNR` e, em seguida, um frame remoto RTR a cada segundo, usando o ID
+clássico `0x12`.
+
+O frame de dados contém oito bytes:
+
+| Frame | ID | DLC | Dados |
+| --- | --- | --- | --- |
+| Dados | `0x12` | `8` | `EV-ENGNR` |
+| RTR | `0x12` | `3` | sem payload; DLC 3 solicita três bytes |
+
+O valor `3` do RTR é o DLC, também chamado de tamanho solicitado. Ele não é um
+byte de comando dentro do frame, pois frames RTR não carregam payload. O
+monitor identifica o bit `CAN_RTR_FLAG` e diferencia os dois tipos de frame.
+
+Este exemplo foi inspirado no vídeo de referência:
+[Arduino CAN Bus RTR](https://www.youtube.com/watch?v=my-mBFQCIZ0).
+
+Com a interface `vcan0` ativa, execute:
+
+```shell
+./build/arduino_rtr
+```
 
 ## Licença
 
