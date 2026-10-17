@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Protocolo Vehicle-Infotainment</title>
+    <style>
+        :root {
+            --ink: #14212b;
+            --muted: #60717d;
+            --paper: #f5f7f7;
+            --panel: #ffffff;
+            --line: #d7e1e4;
+            --blue: #145da0;
+            --blue-dark: #0c3b66;
+            --green: #2c8062;
+            --orange: #d36c32;
+            --code: #15232d;
+            --code-ink: #e9f1f3;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background:
+                linear-gradient(115deg, rgba(20, 93, 160, 0.08), transparent 34rem),
+                var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1160px; margin: auto; padding: 26px 22px 72px; }
+        header { padding: 55px 0 42px; max-width: 900px; }
+        .eyebrow, th, .badge, .label {
+            font-family: "Trebuchet MS", sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+        .eyebrow { color: var(--blue); font-size: 0.76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5.2rem)/0.96 "Trebuchet MS", sans-serif; letter-spacing: -0.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 8px; color: var(--blue-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        .intro { max-width: 800px; color: var(--muted); font-size: 1.2rem; }
+        .badge { display: inline-block; padding: 7px 11px; color: white; background: var(--orange); font-size: 0.72rem; font-weight: 700; }
+        section { margin-top: 54px; }
+        .section-lead { max-width: 790px; color: var(--muted); }
+        .panel, .card { background: rgba(255, 255, 255, 0.94); border: 1px solid var(--line); }
+        .panel { padding: 25px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; }
+        .card p:last-child { margin-bottom: 0; }
+        .card strong { color: var(--green); }
+
+        .actors { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 15px; align-items: stretch; margin-top: 22px; }
+        .actor { padding: 22px; border-top: 5px solid var(--blue); background: white; }
+        .actor.ecu { border-color: var(--green); }
+        .actor.display { border-color: var(--orange); }
+        .actor p { color: var(--muted); }
+        .bus-line { display: grid; align-content: center; gap: 9px; text-align: center; color: var(--blue-dark); font: 700 1.4rem "Trebuchet MS", sans-serif; }
+        .bus-line small { color: var(--muted); font: 0.78rem "Trebuchet MS", sans-serif; }
+
+        .frame { overflow: hidden; margin-top: 20px; border: 1px solid var(--line); background: white; }
+        .frame-title { padding: 12px 15px; color: white; background: var(--blue-dark); font: 700 0.82rem "Trebuchet MS", sans-serif; }
+        .bytes { display: grid; grid-template-columns: 110px repeat(4, 1fr); }
+        .bytes > div { min-height: 64px; display: grid; place-items: center; padding: 10px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); text-align: center; }
+        .bytes > div:nth-child(5n) { border-right: 0; }
+        .bytes .label { color: var(--muted); background: #f1f5f6; font-size: 0.68rem; font-weight: 700; }
+        .bytes .hex { color: var(--blue-dark); font: 700 1.15rem "DejaVu Sans Mono", Consolas, monospace; }
+        .bytes .meaning { color: var(--muted); font-size: 0.82rem; }
+        .bytes .wide { grid-column: span 2; }
+
+        .timeline { display: grid; gap: 0; margin-top: 22px; }
+        .event { display: grid; grid-template-columns: 42px 145px 1fr; gap: 16px; align-items: start; padding: 16px 0; border-bottom: 1px solid var(--line); }
+        .event:last-child { border-bottom: 0; }
+        .event-no { display: grid; place-items: center; width: 34px; height: 34px; color: white; background: var(--blue); font: 700 0.95rem "Trebuchet MS", sans-serif; }
+        .event-owner { color: var(--green); font: 700 0.8rem "Trebuchet MS", sans-serif; text-transform: uppercase; }
+        .event p { margin: 0; color: var(--muted); }
+
+        pre { overflow-x: auto; margin: 17px 0 0; padding: 18px; color: var(--code-ink); background: var(--code); border-left: 4px solid var(--orange); font: 0.86rem/1.55 "DejaVu Sans Mono", Consolas, monospace; }
+        code { font-family: "DejaVu Sans Mono", Consolas, monospace; font-size: 0.9em; }
+        :not(pre) > code { padding: 2px 5px; color: var(--blue-dark); background: #e5eff7; }
+        .callout { margin-top: 19px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff7f1; }
+        .callout strong { color: #99461e; }
+        table { width: 100%; border-collapse: collapse; margin-top: 19px; background: white; }
+        th, td { padding: 12px 14px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: white; background: var(--blue-dark); font-size: 0.76rem; }
+        td:first-child { color: var(--blue-dark); font-weight: 700; white-space: nowrap; }
+        ul { margin: 9px 0 0; padding-left: 22px; }
+        li { margin: 5px 0; }
+        footer { margin-top: 58px; padding-top: 19px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .actors, .grid, .grid.three { grid-template-columns: 1fr; }
+            .bus-line { min-height: 46px; }
+            .bytes { grid-template-columns: 76px repeat(4, 1fr); }
+            .bytes > div { min-height: 70px; padding: 6px; }
+            .bytes .meaning { font-size: 0.72rem; }
+            .event { grid-template-columns: 38px 1fr; }
+            .event p { grid-column: 2; }
+            h1 { font-size: 3rem; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Virtual CAN · protocolo de telemetria</div>
+        <h1>Do sensor ao infotainment</h1>
+        <p class="intro">
+            Uma leitura detalhada da comunicação entre uma ECU do veículo e o
+            infotainment: quem envia, quem recebe, como o frame é filtrado, como os
+            bytes representam velocidade e temperatura e como o código C++ participa
+            de cada etapa.
+        </p>
+        <span class="badge">CAN clássico · request / response</span>
+    </header>
+
+    <section>
+        <h2>O cenário</h2>
+        <p class="section-lead">
+            O veículo possui valores internos de velocidade e temperatura. O
+            infotainment não acessa esses valores diretamente. Ele envia uma
+            requisição pela rede CAN; a ECU recebe o comando, consulta seu estado
+            atual, monta uma resposta e transmite os valores de volta.
+        </p>
+        <div class="actors">
+            <div class="actor display">
+                <h3>Infotainment</h3>
+                <p>Solicita os dados e decodifica a resposta para apresentar na tela.</p>
+                <strong>Cliente CAN</strong>
+            </div>
+            <div class="bus-line">
+                ↔
+                <small>vcan0 · frames CAN</small>
+            </div>
+            <div class="actor ecu">
+                <h3>ECU do veículo</h3>
+                <p>Reconhece o comando, prepara a telemetria e devolve a resposta.</p>
+                <strong>EcuSimulator</strong>
+            </div>
+        </div>
+        <div class="callout">
+            <strong>Importante:</strong> o infotainment não conversa diretamente com
+            uma variável C++ da ECU. Mesmo no simulador, os dados atravessam o mesmo
+            formato de mensagens CAN que seria usado por módulos separados.
+        </div>
+    </section>
+
+    <section>
+        <h2>Contrato do protocolo</h2>
+        <p class="section-lead">
+            O protocolo deste exemplo possui uma requisição curta e uma resposta de
+            quatro bytes. Os IDs são IDs CAN padrão de 11 bits; o primeiro byte da
+            requisição é o opcode que identifica a operação desejada.
+        </p>
+        <table>
+            <thead><tr><th>Direção</th><th>ID</th><th>Comprimento</th><th>Conteúdo</th><th>Significado</th></tr></thead>
+            <tbody>
+                <tr><td>Infotainment → ECU</td><td><code>0x600</code></td><td>1 byte</td><td><code>01</code></td><td>Solicitar velocidade e temperatura</td></tr>
+                <tr><td>ECU → Infotainment</td><td><code>0x650</code></td><td>4 bytes</td><td><code>69 03 DF 00</code></td><td>87.3 km/h e 22.3 °C</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>Frame de requisição</h2>
+        <p>
+            O infotainment envia um frame com ID <code>0x600</code>. O payload tem
+            apenas um byte: <code>0x01</code>. Esse byte é chamado de opcode e indica
+            a operação <em>READ_TELEMETRY</em>.
+        </p>
+        <div class="frame">
+            <div class="frame-title">REQUISIÇÃO · ID CAN 0x600 · DLC 1</div>
+            <div class="bytes">
+                <div class="label">Campo</div><div class="label">Byte 0</div><div class="label">Byte 1</div><div class="label">Byte 2</div><div class="label">Byte 3</div>
+                <div class="label">Dados</div><div class="hex">01</div><div class="meaning">não enviado</div><div class="meaning">não enviado</div><div class="meaning">não enviado</div>
+                <div class="label">Função</div><div class="meaning wide">opcode READ_TELEMETRY</div><div class="meaning wide">payload não utilizado nesta operação</div>
+            </div>
+        </div>
+        <pre><span class="keyword">constexpr</span> uint32_t TELEMETRY_REQUEST_ID = 0x600;
+<span class="keyword">constexpr</span> uint8_t READ_TELEMETRY_COMMAND = 0x01;
+
+<span class="keyword">const</span> uint8_t request[] = {READ_TELEMETRY_COMMAND};
+infotainmentBus.sendFrame(
+    TELEMETRY_REQUEST_ID,
+    request,
+    <span class="keyword">sizeof</span>(request));</pre>
+    </section>
+
+    <section>
+        <h2>Frame de resposta</h2>
+        <p>
+            A ECU responde com o ID <code>0x650</code> e quatro bytes. Cada valor é
+            armazenado como um inteiro sem sinal de 16 bits, em little-endian, com
+            escala de 10. Dividir por 10 transforma a unidade transmitida na unidade
+            exibida.
+        </p>
+        <div class="frame">
+            <div class="frame-title">RESPOSTA · ID CAN 0x650 · DLC 4</div>
+            <div class="bytes">
+                <div class="label">Campo</div><div class="label">Byte 0</div><div class="label">Byte 1</div><div class="label">Byte 2</div><div class="label">Byte 3</div>
+                <div class="label">Hex</div><div class="hex">69</div><div class="hex">03</div><div class="hex">9B</div><div class="hex">03</div>
+                <div class="label">Valor</div><div class="meaning">parte baixa</div><div class="meaning">parte alta</div><div class="meaning">parte baixa</div><div class="meaning">parte alta</div>
+                <div class="label">Campo</div><div class="meaning">velocidade</div><div class="meaning">velocidade</div><div class="meaning">temperatura</div><div class="meaning">temperatura</div>
+            </div>
+        </div>
+        <div class="grid" style="margin-top: 18px">
+            <article class="card">
+                <h3>Velocidade</h3>
+                <p><code>0x0369</code> = 873 decimal. Como a escala é 10, o infotainment exibe <strong>87.3 km/h</strong>.</p>
+            </article>
+            <article class="card">
+                <h3>Temperatura</h3>
+                <p><code>0x00DF</code> = 223 decimal. Como a escala é 10, o infotainment exibe <strong>22.3 °C</strong>.</p>
+            </article>
+        </div>
+        <pre>CanFrame telemetryResponse{};
+telemetryResponse.can_id = 0x650;
+telemetryResponse.len = 4;
+
+<span class="comment">// 873 = 87.3 km/h; 223 = 22.3 °C.</span>
+writeLittleEndian(telemetryResponse.data.data(), 873);
+writeLittleEndian(telemetryResponse.data.data() + 2, 223);</pre>
+    </section>
+
+    <section>
+        <h2>Little-endian, passo a passo</h2>
+        <p>
+            Um inteiro de 16 bits ocupa dois bytes. Em little-endian, o byte da
+            parte baixa vem primeiro e o byte da parte alta vem depois. Para
+            codificar <code>873</code>, que é <code>0x0369</code>, o frame recebe
+            o byte da parte baixa <code>0x69</code> e depois o byte da parte alta
+            <code>0x03</code>.
+        </p>
+        <pre><span class="keyword">void</span> writeLittleEndian(uint8_t* destination, uint16_t value)
+{
+    destination[0] = <span class="keyword">static_cast</span>&lt;uint8_t&gt;(value &amp; 0xFF);
+    destination[1] = <span class="keyword">static_cast</span>&lt;uint8_t&gt;((value &gt;&gt; 8) &amp; 0xFF);
+}
+
+uint16_t readLittleEndian(<span class="keyword">const</span> uint8_t* source)
+{
+    <span class="keyword">return</span> <span class="keyword">static_cast</span>&lt;uint16_t&gt;(source[0]) |
+           <span class="keyword">static_cast</span>&lt;uint16_t&gt;(source[1] &lt;&lt; 8);
+}</pre>
+        <div class="callout">
+            <strong>Contrato dos dois lados:</strong> o transmissor e o receptor
+            precisam concordar sobre ordem dos bytes, escala, unidade e sinal. Se a
+            ECU enviar décimos e o infotainment interpretar inteiros, a tela exibirá
+            um valor dez vezes maior.
+        </div>
+    </section>
+
+    <section>
+        <h2>O processo completo</h2>
+        <div class="panel timeline">
+            <div class="event"><div class="event-no">1</div><div class="event-owner">Infotainment</div><p>Cria o frame de requisição com ID <code>0x600</code> e opcode <code>0x01</code>.</p></div>
+            <div class="event"><div class="event-no">2</div><div class="event-owner">SocketCanBus</div><p>Valida o ID e o tamanho, copia os dados para <code>can_frame</code> e chama <code>write</code>.</p></div>
+            <div class="event"><div class="event-no">3</div><div class="event-owner">Kernel / vcan0</div><p>Entrega o frame aos sockets CAN ligados à interface virtual.</p></div>
+            <div class="event"><div class="event-no">4</div><div class="event-owner">EcuSimulator</div><p>Chama <code>receiveFrame</code>; <code>poll</code> aguarda o frame e <code>read</code> o copia.</p></div>
+            <div class="event"><div class="event-no">5</div><div class="event-owner">ECU</div><p>Compara <code>can_id</code> com <code>0x600</code> e <code>data[0]</code> com <code>0x01</code>.</p></div>
+            <div class="event"><div class="event-no">6</div><div class="event-owner">EcuSimulator</div><p>Para um comando válido, envia o frame configurado com ID <code>0x650</code>.</p></div>
+            <div class="event"><div class="event-no">7</div><div class="event-owner">Infotainment</div><p>Recebe apenas o ID <code>0x650</code>, graças ao filtro configurado no socket.</p></div>
+            <div class="event"><div class="event-no">8</div><div class="event-owner">Aplicação</div><p>Decodifica os pares de bytes, divide por 10 e apresenta velocidade e temperatura.</p></div>
+        </div>
+    </section>
+
+    <section>
+        <h2>Como o filtro evita confusão</h2>
+        <p>
+            O socket do infotainment é configurado para receber o ID da resposta:
+        </p>
+        <pre>infotainmentBus.setFilter(
+    TELEMETRY_RESPONSE_ID,
+    CAN_STANDARD_ID_MASK);</pre>
+        <p>
+            <code>CAN_STANDARD_ID_MASK</code> vale <code>0x7FF</code>, portanto todos
+            os 11 bits do ID padrão são considerados. O resultado é um filtro exato:
+            <code>0x650</code> passa; <code>0x600</code> não passa nesse socket.
+            A ECU, por outro lado, recebe a requisição porque seu socket não possui
+            filtro restritivo nesse exemplo.
+        </p>
+    </section>
+
+    <section>
+        <h2>Estados e falhas</h2>
+        <table>
+            <thead><tr><th>Situação</th><th>Status</th><th>Comportamento</th></tr></thead>
+            <tbody>
+                <tr><td>Comando válido</td><td><code>SUCCESS</code></td><td>ECU transmite a resposta.</td></tr>
+                <tr><td>ID ou opcode diferente</td><td><code>COMMAND_NOT_MATCHED</code></td><td>ECU ignora o comando e não responde.</td></tr>
+                <tr><td>Nenhum frame no prazo</td><td><code>TIMEOUT</code></td><td>O consumidor pode tentar novamente ou atualizar a tela.</td></tr>
+                <tr><td>Falha no <code>poll</code></td><td><code>WAIT_ERROR</code></td><td>Indica falha ao aguardar o socket.</td></tr>
+                <tr><td>Falha no <code>read</code></td><td><code>READ_ERROR</code></td><td>O frame não está disponível como esperado.</td></tr>
+                <tr><td>Falha no <code>write</code></td><td><code>TRANSMISSION_ERROR</code></td><td>A resposta não foi transmitida integralmente.</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section>
+        <h2>O papel de cada classe</h2>
+        <div class="grid three">
+            <article class="card"><h3>ICanBus</h3><p>Define o contrato de envio, recepção e filtros. Não conhece Linux nem o formato <code>can_frame</code>.</p></article>
+            <article class="card"><h3>SocketCanBus</h3><p>Converte o contrato para chamadas SocketCAN e traduz resultados do sistema para <code>CanBusStatus</code>.</p></article>
+            <article class="card"><h3>EcuSimulator</h3><p>Implementa a regra de negócio: reconhecer um comando e transmitir uma resposta. Depende de <code>ICanBus</code>.</p></article>
+        </div>
+        <pre>ICanBus&amp; ecuTransport = ecuBus;
+EcuSimulator ecu(
+    ecuTransport,
+    0x600,
+    0x01,
+    telemetryResponse);</pre>
+        <p>
+            Essa referência é importante: a ECU não recebe um <code>SocketCanBus&amp;</code>,
+            mas um <code>ICanBus&amp;</code>. Por isso, o mesmo simulador pode operar com
+            uma implementação em memória durante um teste ou com SocketCAN em uma
+            execução real.
+        </p>
+    </section>
+
+    <section>
+        <h2>Executando o exemplo</h2>
+        <p>Com a interface virtual configurada e o projeto compilado:</p>
+        <pre>sudo modprobe vcan
+sudo ip link add dev vcan0 type vcan
+sudo ip link set vcan0 up
+
+cmake --build build
+./build/vehicle_infotainment</pre>
+        <p>A saída esperada é:</p>
+        <pre>Velocidade: 87.3 km/h
+Temperatura: 22.3 C</pre>
+    </section>
+
+    <footer>
+        Documento baseado em <code>vehicle_infotainment.cpp</code>,
+        <code>EcuSimulator</code>, <code>ICanBus</code> e <code>SocketCanBus</code>.
+    </footer>
+</main>
+</body>
+</html>

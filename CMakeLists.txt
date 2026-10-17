@@ -18,6 +18,10 @@ add_executable(test_can tests/test_can.cpp)
 
 target_link_libraries(test_can PRIVATE canbus)
 
+add_executable(vehicle_infotainment examples/vehicle_infotainment.cpp)
+
+target_link_libraries(vehicle_infotainment PRIVATE canbus)
+
 enable_testing()
 
 add_test(NAME can_tests COMMAND test_can)

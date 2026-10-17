@@ -132,6 +132,35 @@ propaga o `CanBusStatus` recebido. Se o ID ou opcode não corresponder ao
 comando configurado, retorna `COMMAND_NOT_MATCHED` e não envia resposta. Para
 um comando reconhecido, retorna o status da transmissão da resposta.
 
+## Exemplo: veículo e infotainment
+
+O executável `vehicle_infotainment` simula dois módulos conectados à mesma
+interface CAN virtual: uma ECU do veículo e o infotainment. O infotainment
+solicita a telemetria, a ECU responde e o infotainment decodifica os valores
+para exibição.
+
+O protocolo do exemplo é:
+
+| Frame | ID | Dados |
+| --- | --- | --- |
+| Requisição | `0x600` | `0x01` solicita velocidade e temperatura |
+| Resposta | `0x650` | bytes 0-1: velocidade; bytes 2-3: temperatura |
+
+Os valores são enviados como inteiros sem sinal em little-endian, multiplicados
+por 10. Assim, `873` representa `87.3 km/h` e `223` representa `22.3 C`.
+
+Com a interface `vcan0` ativa, execute:
+
+```shell
+./build/vehicle_infotainment
+```
+
+O fluxo é equivalente ao de um infotainment real: a tela não conversa
+diretamente com o socket; ela recebe dados já interpretados pelo componente de
+comunicação. No projeto, o frame trafega por `ICanBus`, a implementação
+`SocketCanBus` usa SocketCAN e `EcuSimulator` representa a ECU que responde ao
+comando.
+
 ## Licença
 
 Este projeto é distribuído sob a licença **BSD 3-Clause**, uma licença
