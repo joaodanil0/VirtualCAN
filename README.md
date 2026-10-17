@@ -28,6 +28,42 @@ Se a interface já existir, não é necessário executar novamente o comando
 sudo ip link delete vcan0
 ```
 
+## Interface CAN FD virtual
+
+Para testar CAN FD separadamente, crie uma interface virtual dedicada. O MTU
+de `72` bytes corresponde ao frame CAN FD completo, incluindo cabeçalho e até
+64 bytes de dados:
+
+```shell
+sudo modprobe vcan
+sudo ip link add dev vcanfd0 type vcan
+sudo ip link set dev vcanfd0 mtu 72
+sudo ip link set dev vcanfd0 up
+```
+
+Remova a interface quando terminar:
+
+```shell
+sudo ip link delete vcanfd0
+```
+
+Os testes CAN FD usam a interface virtual dedicada `vcanfd0`. Depois de
+criá-la e ativá-la, execute:
+
+```shell
+ctest --test-dir build -R canfd_tests --output-on-failure
+```
+
+### Interface CAN FD física
+
+Os comandos abaixo são opcionais e se aplicam somente a uma interface física
+como `can0`. Eles não são necessários para os testes com `vcanfd0`:
+
+```shell
+sudo ip link set can0 type can bitrate 500000 dbitrate 2000000 fd on
+sudo ip link set can0 up
+```
+
 ## Compilação
 
 Configure o projeto na pasta `build` e compile:
@@ -38,7 +74,9 @@ cmake --build build
 ```
 
 O primeiro comando lê o `CMakeLists.txt` e gera os arquivos de build. O
-segundo compila a biblioteca `canbus` e o executável de testes `test_can`.
+segundo compila a biblioteca `canbus`, os executáveis de teste `test_can` e
+`test_canfd`, além dos exemplos `vehicle_infotainment` e
+`vehicle_infotainment_fd`.
 
 ## Testes
 
@@ -132,6 +170,25 @@ propaga o `CanBusStatus` recebido. Se o ID ou opcode não corresponder ao
 comando configurado, retorna `COMMAND_NOT_MATCHED` e não envia resposta. Para
 um comando reconhecido, retorna o status da transmissão da resposta.
 
+## CAN FD
+
+O projeto também oferece `ICanFdBus` e `SocketCanFdBus`: a primeira define o contrato
+do transporte CAN FD e a segunda é sua implementação SocketCAN. O contrato usa
+tipos próprios, como `CanFdFrame` e `CanFdBusStatus`, sem depender de `ICanBus`.
+`SocketCanFdBus` habilita `CAN_RAW_FD_FRAMES`, aceita payloads de até 64 bytes e
+permite enviar flags como `CAN_FD_BITRATE_SWITCH`.
+
+Os testes CAN FD podem ser executados com:
+
+```shell
+ctest --test-dir build -R canfd_tests --output-on-failure
+```
+
+Em `vcan`, o payload e o tamanho do frame são testados normalmente. Como a
+interface virtual não possui bitrate físico, flags relacionadas ao bitrate,
+como BRS, podem não ser preservadas no loopback. Em uma interface CAN FD real,
+configure também o bitrate de dados com `dbitrate` e `fd on`.
+
 ## Exemplo: veículo e infotainment
 
 O executável `vehicle_infotainment` simula dois módulos conectados à mesma
@@ -160,6 +217,22 @@ diretamente com o socket; ela recebe dados já interpretados pelo componente de
 comunicação. No projeto, o frame trafega por `ICanBus`, a implementação
 `SocketCanBus` usa SocketCAN e `EcuSimulator` representa a ECU que responde ao
 comando.
+
+### Exemplo veículo e infotainment com CAN FD
+
+O executável `vehicle_infotainment_fd` implementa o mesmo fluxo usando
+`ICanFdBus`, `SocketCanFdBus` e `EcuFdSimulator`. Ele usa a interface `vcanfd0`,
+IDs estendidos de 29 bits e frames CAN FD.
+
+Com a interface `vcanfd0` ativa, execute:
+
+```shell
+./build/vehicle_infotainment_fd
+```
+
+O protocolo permanece uma requisição com opcode `0x01` e uma resposta contendo
+velocidade e temperatura, mas o transporte usa `CanFdFrame` e suporta payloads
+de até 64 bytes.
 
 ## Licença
 
