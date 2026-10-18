@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Como funciona a arbitragem CAN, a prioridade dos identificadores e a lógica dominante/recessiva, com comparação entre 0x100 e 0x200.">
+    <title>Arbitragem CAN: prioridade e bits</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #17252d;
+            --code-ink: #edf4f5;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1120px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 870px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 830px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        .truth { width: 100%; margin-top: 16px; border-collapse: collapse; background: #fff; }
+        .truth th, .truth td { padding: 11px 13px; border: 1px solid var(--line); text-align: center; }
+        .truth th { color: #fff; background: var(--teal-dark); font-size: .75rem; }
+        .truth td:last-child { color: var(--teal-dark); font-weight: 700; }
+        .binary { margin-top: 18px; overflow-x: auto; }
+        .binary table { width: 100%; min-width: 720px; border-collapse: collapse; text-align: center; }
+        .binary th, .binary td { padding: 9px 6px; border: 1px solid var(--line); }
+        .binary th { color: #fff; background: var(--teal-dark); font: 700 .75rem "Trebuchet MS", sans-serif; }
+        .binary td { background: #fff; font: 700 .9rem "DejaVu Sans Mono", Consolas, monospace; }
+        .binary td:first-child { width: 155px; color: var(--ink); background: #f0f5f4; text-align: left; font: 700 .8rem "Trebuchet MS", sans-serif; }
+        .binary .zero { color: #fff; background: var(--teal); }
+        .binary .one { color: #fff; background: var(--orange); }
+        .binary .shared { color: #fff; background: #647780; }
+        .binary .loser { color: var(--orange-dark); background: #fff0e7; font: 700 .72rem "Trebuchet MS", sans-serif; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: white; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        .example { margin-top: 18px; padding: 18px; color: var(--code-ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; }
+        .example p { margin: 12px 0 0; color: #cbd8dc; font-size: .9rem; }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 720px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .truth th, .truth td { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Redes embarcadas · Acesso ao meio compartilhado</div>
+        <h1>Arbitragem CAN</h1>
+        <p class="lead">Quando várias ECUs tentam transmitir ao mesmo tempo, o CAN resolve qual continua usando o barramento sem corromper o frame vencedor. A prioridade é decidida bit a bit pela combinação de identificadores e dos estados dominante e recessivo.</p>
+        <span class="tag">Prioridade · lógica bit a bit · 0x100 vs 0x200</span>
+    </header>
+
+    <section aria-labelledby="why-title">
+        <h2 id="why-title">Por que existe arbitragem?</h2>
+        <div class="panel">
+            <p>O barramento CAN é compartilhado: qualquer nó pode iniciar uma transmissão quando o meio está livre. Se duas ou mais ECUs começam juntas, todas transmitem e monitoram o barramento simultaneamente. Durante o campo de arbitragem, cada nó compara o bit que enviou com o bit que lê do barramento.</p>
+            <p><strong>Exemplo:</strong> a ECU de freios tem um frame pronto com ID <code>0x100</code> e a ECU de motor tem outro com ID <code>0x200</code>. Se ambas estiverem prontas quando o barramento fica livre, as duas começam o SOF na mesma oportunidade e passam a disputar o barramento. “Ao mesmo tempo” quer dizer que tentam iniciar na mesma janela de barramento livre — não que os dados tenham sido calculados no mesmo instante pelo relógio interno das ECUs. Se a segunda mensagem ficar pronta depois que um frame já começou, ela espera; não pode entrar no meio da transmissão.</p>
+            <p>A arbitragem não funciona como um sorteio nem como uma mensagem de controle separada. O próprio padrão de bits dos campos de arbitragem determina qual frame tem prioridade. O vencedor continua a transmissão; os outros param de transmitir e passam a receber o frame vencedor.</p>
+            <div class="callout"><strong>Resultado:</strong> vários nós podem competir, mas apenas o frame vencedor prossegue. Como os nós perdedores percebem a perda antes de continuar com campos diferentes, não há colisão destrutiva nem corrupção causada pela arbitragem.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="logic-title">
+        <h2 id="logic-title">Dominante e recessivo</h2>
+        <p class="section-lead">O CAN combina os bits de vários transmissores de modo que o dominante prevalece. A lógica vista no barramento se comporta como um AND de bits: zero domina um.</p>
+        <div class="grid">
+            <article class="card">
+                <h3>Dominante = 0</h3>
+                <p>O nó dirige o par CAN para o estado dominante. Em CAN de alta velocidade, CAN_H e CAN_L ficam com uma diferença de tensão perceptível (valores típicos aproximados de 3,5 V e 1,5 V).</p>
+            </article>
+            <article class="card orange">
+                <h3>Recessivo = 1</h3>
+                <p>O nó não força o estado dominante; se todos enviarem recessivo, o barramento permanece recessivo (valores típicos próximos de 2,5 V em cada fio de um transceptor de alta velocidade).</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <table class="truth">
+                <thead><tr><th>Nó A transmite</th><th>Nó B transmite</th><th>Estado observado no barramento</th></tr></thead>
+                <tbody>
+                    <tr><td>0 dominante</td><td>0 dominante</td><td>0 dominante</td></tr>
+                    <tr><td>0 dominante</td><td>1 recessivo</td><td>0 dominante</td></tr>
+                    <tr><td>1 recessivo</td><td>0 dominante</td><td>0 dominante</td></tr>
+                    <tr><td>1 recessivo</td><td>1 recessivo</td><td>1 recessivo</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">A tabela mostra a lógica no barramento, não uma ligação elétrica literal entre os pinos. Os níveis de tensão reais variam com os transceptores e as condições da rede.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="priority-title">
+        <h2 id="priority-title">Como o identificador define a prioridade</h2>
+        <div class="panel">
+            <p>Para identificadores do mesmo formato, o campo de ID é enviado do bit mais significativo para o menos significativo. Se dois transmissores enviarem bits diferentes na mesma posição, o valor dominante 0 mantém o barramento dominante. O transmissor que enviou 1, mas leu 0, percebe que perdeu a arbitragem.</p>
+            <p>Por isso, para IDs CAN padrão de 11 bits, <strong>o menor valor numérico tem maior prioridade</strong>. Essa regra considera apenas os bits do identificador quando se comparam IDs do mesmo formato; em casos como formato padrão versus estendido, campos de controle da arbitragem também participam.</p>
+            <div class="grid">
+                <article class="card blue">
+                    <h3>ID 0x100</h3>
+                    <p><code>0x100</code> = 256 decimal. Escrito com 11 bits: <code>00100000000</code>.</p>
+                </article>
+                <article class="card orange">
+                    <h3>ID 0x200</h3>
+                    <p><code>0x200</code> = 512 decimal. Escrito com 11 bits: <code>01000000000</code>.</p>
+                </article>
+            </div>
+            <div class="binary">
+                <table aria-label="Comparação bit a bit dos IDs CAN padrão 0x100 e 0x200">
+                    <thead>
+                        <tr><th>ID (MSB primeiro)</th><th>ID10</th><th>ID9</th><th>ID8</th><th>ID7</th><th>ID6</th><th>ID5</th><th>ID4</th><th>ID3</th><th>ID2</th><th>ID1</th><th>ID0</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>0x100 envia</td><td class="shared">0</td><td class="zero">0</td><td>1</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                        <tr><td>0x200 envia</td><td class="shared">0</td><td class="one">1</td><td class="loser" colspan="9">Perde ao ler dominante no bit ID9; deixa de transmitir</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="caption">ID10 é enviado primeiro. Os dois IDs começam com 0 em ID10, então continuam empatados. A primeira diferença é ID9: 0x100 envia 0; 0x200 envia 1. O barramento fica dominante (0), e a ECU que enviava 0x200 detecta a perda.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="walkthrough-title">
+        <h2 id="walkthrough-title">Passo a passo: 0x100 disputa com 0x200</h2>
+        <div class="panel">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>O barramento está livre.</strong> Depois do intervalo recessivo, as duas ECUs iniciam um frame padrão ao mesmo tempo. Ambas enviam o SOF dominante.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Comparam ID10.</strong> O primeiro bit do ID é 0 nos dois casos; o barramento permanece dominante, então nenhum nó perde ainda.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Comparam ID9.</strong> A ECU de 0x100 envia 0; a de 0x200 envia 1. Como 0 é dominante, o estado observado é 0.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>0x200 detecta a perda.</strong> Essa ECU transmitiu recessivo (1), mas leu dominante (0). Ela interrompe a própria transmissão sem sinalizar erro e passa a receber o frame que venceu.</p></div>
+                <div class="step"><span class="number">5</span><p><strong>0x100 termina o frame.</strong> O restante do ID, os campos de controle, os dados e os campos finais seguem sem interrupção. A ECU de 0x200 pode tentar novamente quando o barramento estiver livre.</p></div>
+            </div>
+            <div class="callout"><strong>A perda de arbitragem não é um erro de bit.</strong> É um resultado normal e previsto. Diferentemente de uma falha de transmissão, ela não gera um frame de erro nem exige que o vencedor reinicie.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="when-title">
+        <h2 id="when-title">Condições e consequências práticas</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>Precisa haver disputa</h3>
+                <p>A arbitragem decide entre nós que iniciam juntos. Uma ECU que encontra o barramento ocupado não interrompe o frame em andamento; aguarda uma oportunidade de transmissão.</p>
+            </article>
+            <article class="card blue">
+                <h3>O ID também é prioridade</h3>
+                <p>IDs baixos podem ganhar repetidamente de IDs altos se houver tráfego contínuo de alta prioridade. Ao projetar uma rede, considere deadlines e evite starvation das mensagens de menor prioridade.</p>
+            </article>
+            <article class="card orange">
+                <h3>Mesmo ID exige coordenação</h3>
+                <p>Se dois nós transmitirem simultaneamente o mesmo ID e os mesmos campos de arbitragem, a disputa pode continuar além do ID. IDs usados por produtores diferentes devem ser coordenados; dados divergentes podem provocar erro de bit.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <h3>O exemplo vale para este caso</h3>
+            <p>A comparação <code>0x100</code> versus <code>0x200</code> assume dois frames CAN clássicos com identificadores padrão de 11 bits e mesma condição nos demais campos de arbitragem até o bit que decide o resultado. Para uma visão detalhada da notação hexadecimal e dos formatos de 11 e 29 bits, consulte <a href="identificadores-can.html">Identificadores CAN</a>.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Os níveis de tensão indicados são valores típicos explicativos para CAN de alta velocidade; consulte as especificações e os datasheets dos transceptores do projeto para níveis elétricos garantidos.</p>
+    </footer>
+</main>
+</body>
+</html>

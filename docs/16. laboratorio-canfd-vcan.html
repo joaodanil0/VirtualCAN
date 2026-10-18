@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Laboratório para enviar e observar frames CAN FD na interface virtual vcanfd0 usando candump e cansend.">
+    <title>Experimentar CAN FD com vcanfd0</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 890px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 850px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .72rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .table-scroll { overflow-x: auto; }
+        .table-scroll table { min-width: 700px; }
+        .code-block { margin-top: 16px; padding: 18px; overflow-x: auto; color: var(--ink); background: var(--code); border-left: 4px solid var(--orange); }
+        .code-block pre { margin: 0; font: .88rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .code-caption { margin: 12px 0 0; color: var(--muted); font-size: .9rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Laboratório prático · CAN FD · Linux</div>
+        <h1>Experimentar frames FD com vcan</h1>
+        <p class="lead">Configure uma interface virtual SocketCAN para CAN FD, observe os frames com <code>candump</code> e envie mensagens de 8, 12 e 64 bytes com <code>cansend</code>. O exercício valida o caminho de software sem precisar de um barramento físico.</p>
+        <span class="tag">vcanfd0 · candump · cansend</span>
+    </header>
+
+    <section aria-labelledby="requirements-title">
+        <h2 id="requirements-title">1. Instalar ferramentas e preparar a interface</h2>
+        <div class="panel">
+            <p>Em Linux, instale <code>can-utils</code> para obter <code>candump</code> e <code>cansend</code>:</p>
+            <div class="code-block"><pre>sudo apt install can-utils</pre></div>
+            <p>Carregue o módulo <code>vcan</code> e crie uma interface com MTU de 72 bytes, o tamanho da estrutura SocketCAN de um frame FD completo:</p>
+            <div class="code-block">
+                <pre>sudo modprobe vcan
+sudo ip link add dev vcanfd0 type vcan
+sudo ip link set dev vcanfd0 mtu 72
+sudo ip link set dev vcanfd0 up</pre>
+            </div>
+            <p>Confirme o estado e o MTU:</p>
+            <div class="code-block"><pre>ip -details link show dev vcanfd0</pre></div>
+            <p class="caption">Se <code>vcanfd0</code> já existir, não repita <code>ip link add</code>; confirme que está ativa e com MTU 72. Para removê-la ao terminar (somente se você a criou para este teste): <code>sudo ip link delete dev vcanfd0</code>.</p>
+            <div class="callout"><strong>MTU 72 não é payload de 72 bytes.</strong> É o tamanho da estrutura CAN FD completa usada pelo SocketCAN; o payload máximo transportado no frame é 64 bytes.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="monitor-title">
+        <h2 id="monitor-title">2. Observar frames com candump</h2>
+        <div class="panel">
+            <p>Em um terminal, inicie a captura antes de enviar:</p>
+            <div class="code-block"><pre>candump vcanfd0</pre></div>
+            <p>Deixe esse processo em execução. Os frames que chegam à interface serão exibidos com ID, comprimento de dados e bytes recebidos.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="syntax-title">
+        <h2 id="syntax-title">3. Entender a sintaxe de cansend para FD</h2>
+        <div class="panel">
+            <p>Para um frame clássico, <code>cansend</code> usa um único <code>#</code>. Para CAN FD, usa <code>##</code>, seguido por um dígito hexadecimal de flags e depois os dados:</p>
+            <div class="code-block"><pre>can_id##flagsdata</pre></div>
+            <table>
+                <thead><tr><th>Parte</th><th>Significado neste roteiro</th></tr></thead>
+                <tbody>
+                    <tr><td><code>can_id</code></td><td>Identificador em hexadecimal, sem prefixo <code>0x</code>.</td></tr>
+                    <tr><td><code>##</code></td><td>Indica que o frame usa o formato CAN FD.</td></tr>
+                    <tr><td><code>flags</code></td><td>Um dígito hexadecimal. <code>0</code> não habilita BRS; <code>1</code> ativa o flag BRS.</td></tr>
+                    <tr><td><code>data</code></td><td>Pares de dígitos hexadecimais; cada par representa um byte. O DLC é derivado do comprimento do payload conforme o mapeamento CAN FD.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>Importante:</strong> o dígito de flags vem imediatamente antes dos dados. Por exemplo, em <code>123##0AABB...</code>, o <code>0</code> é o flag e <code>AA</code> inicia o payload.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="send-title">
+        <h2 id="send-title">4. Enviar frames clássicos e FD</h2>
+        <div class="panel">
+            <p>Abra outro terminal e envie as mensagens abaixo:</p>
+            <div class="code-block">
+                <pre># CAN clássico: 8 bytes
+cansend vcanfd0 123#0011223344556677
+
+# CAN FD: DLC 9 corresponde a 12 bytes, sem BRS
+cansend vcanfd0 123##0AABBCCDDEEFF001122334455
+
+# CAN FD: DLC 15 corresponde a 64 bytes, com flag BRS
+cansend vcanfd0 321##1000102030405060708090A0B0C0D0E0F101112131415161718191A1B1C1D1E1F202122232425262728292A2B2C2D2E2F303132333435363738393A3B3C3D3E3F</pre>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Comando</th><th>Formato</th><th>DLC</th><th>Payload</th><th>Flag</th></tr></thead>
+                    <tbody>
+                        <tr><td><code>123#...</code></td><td>Clássico</td><td>8</td><td>8 bytes</td><td>Não se aplica</td></tr>
+                        <tr><td><code>123##0...</code></td><td>CAN FD</td><td>9</td><td>12 bytes</td><td>BRS desabilitado</td></tr>
+                        <tr><td><code>321##1...</code></td><td>CAN FD</td><td>15</td><td>64 bytes</td><td>BRS habilitado</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="caption">O payload de 64 bytes percorre os valores de <code>00</code> a <code>3F</code>. Os comprimentos FD válidos são 0–8, 12, 16, 20, 24, 32, 48 e 64 bytes; 9 bytes, por exemplo, não têm código DLC próprio.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="compare-title">
+        <h2 id="compare-title">5. Comparar o resultado no terminal</h2>
+        <div class="panel">
+            <p>Em <code>candump</code>, compare ID e comprimento:</p>
+            <div class="code-block">
+                <pre>vcanfd0  123  [8]   00 11 22 33 44 55 66 77
+vcanfd0  123  [12]  AA BB CC DD EE FF 00 11 22 33 44 55
+vcanfd0  321  [64]  00 01 02 03 ... 3C 3D 3E 3F</pre>
+                <p class="code-caption">Saída esquemática; espaços, indicação de flags e notação variam por versão e opções do candump.</p>
+            </div>
+            <p>O ID <code>0x123</code> aparece duas vezes: um frame clássico de 8 bytes e um frame FD de 12 bytes. O prefixo <code>##</code> seleciona FD, e o flag <code>1</code> no frame de ID <code>0x321</code> solicita BRS.</p>
+            <div class="callout"><strong>O que vcan não demonstra:</strong> a interface virtual transporta os flags e os bytes pela pilha de software, mas não troca de bitrate fisicamente. Assim, o frame com BRS pode ser observado, mas a temporização de 2 Mbit/s exige hardware CAN FD.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="filter-title">
+        <h2 id="filter-title">6. Filtrar e registrar a captura</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>Filtrar pelo ID 0x123</h3>
+                <div class="code-block"><pre>candump vcanfd0,123:7FF</pre></div>
+                <p>O filtro mantém os frames com ID padrão <code>0x123</code>, incluindo o clássico de 8 bytes e o FD de 12 bytes.</p>
+            </article>
+            <article class="card blue">
+                <h3>Gravar em arquivo</h3>
+                <div class="code-block"><pre>candump -L -t a vcanfd0 &gt; canfd-vcan.log</pre></div>
+                <p>Envie os frames em outro terminal e finalize a captura com <code>Ctrl+C</code>. O arquivo registra as mensagens observadas com timestamp.</p>
+            </article>
+        </div>
+    </section>
+
+    <section aria-labelledby="troubleshoot-title">
+        <h2 id="troubleshoot-title">Diagnóstico rápido</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>MTU incorreto</h3>
+                <p>Para frames FD, confirme que <code>vcanfd0</code> tem MTU 72 e está ativa.</p>
+            </article>
+            <article class="card orange">
+                <h3>Comprimento sem DLC</h3>
+                <p>Use um tamanho válido: para mais de 8 bytes, escolha 12, 16, 20, 24, 32, 48 ou 64.</p>
+            </article>
+            <article class="card purple">
+                <h3>Formato de comando</h3>
+                <p>Use <code>#</code> para clássico e <code>##flags</code> para FD. O nibble de flags é obrigatório após <code>##</code>.</p>
+            </article>
+        </div>
+        <div class="callout"><strong>Teste físico é diferente:</strong> para validar BRS, bit timing, transceptores e integridade elétrica, use uma rede CAN FD de hardware compatível e assegure que todos os nós suportam os frames FD transmitidos.</div>
+    </section>
+
+    <footer>
+        <p>Para testar os exemplos do projeto, consulte também <a href="can-classic-vs-canfd.html">CAN clássico vs CAN FD</a> e a <a href="../README.md">configuração de interfaces vcan</a>.</p>
+    </footer>
+</main>
+</body>
+</html>

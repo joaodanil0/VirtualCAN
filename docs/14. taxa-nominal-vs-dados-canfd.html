@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Diferença entre bitrate nominal e bitrate de dados no CAN FD, com o papel do BRS, fases do frame e exemplo de configuração.">
+    <title>Taxa nominal e taxa de dados no CAN FD</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1120px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 880px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 850px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .72rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .timeline { display: grid; grid-template-columns: 2fr 1fr 3fr 1fr 2fr; gap: 4px; margin-top: 20px; }
+        .phase { min-height: 94px; display: grid; align-content: center; padding: 13px 8px; color: #fff; background: var(--teal); text-align: center; font: 700 .78rem "Trebuchet MS", sans-serif; }
+        .phase.data { background: var(--purple); }
+        .phase small { display: block; margin-top: 6px; font: .68rem/1.4 Georgia, serif; }
+        .example { margin-top: 18px; padding: 18px; color: var(--ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .example p { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .timeline { grid-template-columns: 1fr; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">CAN FD · Temporização e BRS</div>
+        <h1>Taxa nominal e taxa de dados</h1>
+        <p class="lead">CAN FD pode usar uma taxa de bits para a arbitragem e outra, opcionalmente mais alta, para a parte de dados. O bit BRS controla a troca; os valores numéricos das taxas são configurados nos nós, não codificados dentro do frame.</p>
+        <span class="tag">Bitrate nominal · dbitrate · BRS</span>
+    </header>
+
+    <section aria-labelledby="terms-title">
+        <h2 id="terms-title">O que cada taxa significa</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>Taxa nominal</h3>
+                <p>É a taxa base da rede CAN. CAN clássico usa essa taxa durante o frame inteiro. Em CAN FD, ela continua sendo usada na arbitragem e em outras partes do frame fora da fase de dados acelerada.</p>
+            </article>
+            <article class="card purple">
+                <h3>Taxa de dados</h3>
+                <p>É a taxa configurada para a fase de dados do CAN FD quando a troca de bitrate está habilitada. Normalmente é maior que a nominal, mas o valor depende do hardware e do projeto da rede.</p>
+            </article>
+        </div>
+        <div class="callout"><strong>Unidade:</strong> ambas as taxas são medidas em bits por segundo. Por exemplo, <code>500000</code> representa 500 kbit/s e <code>2000000</code> representa 2 Mbit/s.</div>
+    </section>
+
+    <section aria-labelledby="brs-title">
+        <h2 id="brs-title">Como o BRS controla a troca</h2>
+        <div class="panel">
+            <p>BRS (<em>Bit Rate Switch</em>) é um bit do frame CAN FD. Seu valor informa se o frame solicita uma troca para a taxa de dados:</p>
+            <table>
+                <thead><tr><th>Valor de BRS</th><th>Comportamento</th><th>O frame continua sendo CAN FD?</th></tr></thead>
+                <tbody>
+                    <tr><td>Dominante (0)</td><td>Não há troca. A arbitragem e os dados usam a taxa nominal.</td><td>Sim. O frame ainda pode transportar até 64 bytes.</td></tr>
+                    <tr><td>Recessivo (1)</td><td>O frame solicita a taxa de dados após o ponto de amostragem do bit BRS.</td><td>Sim. A fase mais rápida só ocorre se os nós estiverem configurados de forma compatível.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>BRS não contém o valor da taxa.</strong> Ele apenas seleciona se a troca ocorre. A taxa nominal e a taxa de dados são configuradas separadamente em cada interface.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="phases-title">
+        <h2 id="phases-title">Em quais partes do frame cada taxa é usada?</h2>
+        <div class="panel">
+            <p>Com BRS habilitado, a mudança acontece dentro do próprio frame:</p>
+            <div class="timeline" role="img" aria-label="CAN FD com BRS: SOF e arbitragem na taxa nominal; bit BRS também na taxa nominal; ESI, DLC, dados e CRC na taxa de dados; delimitador CRC, ACK e EOF na taxa nominal">
+                <div class="phase">Taxa nominal<small>SOF · ID · arbitragem · FDF · res</small></div>
+                <div class="phase">Taxa nominal<small>bit BRS</small></div>
+                <div class="phase data">Taxa de dados<small>ESI · DLC · payload · sequência CRC</small></div>
+                <div class="phase">Retorno à nominal<small>delimitador CRC</small></div>
+                <div class="phase">Taxa nominal<small>ACK · EOF</small></div>
+            </div>
+            <p class="caption">A troca para a taxa de dados ocorre no ponto de amostragem do BRS recessivo. O retorno à nominal ocorre no ponto de amostragem do delimitador CRC. O diagrama é conceitual, não está em escala.</p>
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>SOF e arbitragem:</strong> todos os nós usam a taxa nominal para sincronizar e disputar o barramento.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Bit BRS:</strong> é transmitido na taxa nominal. Se for recessivo, os nós compatíveis mudam de taxa no ponto de amostragem desse bit.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Fase de dados:</strong> ESI, DLC, payload e sequência CRC usam a taxa de dados enquanto a troca está ativa.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>CRC delimiter:</strong> no ponto de amostragem desse delimitador, os nós retornam à taxa nominal para ACK e EOF.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comparison-title">
+        <h2 id="comparison-title">Com BRS e sem BRS</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>BRS = 0</h3>
+                <p>O frame é CAN FD, mas não troca para a taxa de dados. A arbitragem, o payload maior e os campos finais são enviados todos na taxa nominal.</p>
+            </article>
+            <article class="card orange">
+                <h3>BRS = 1</h3>
+                <p>O frame solicita a taxa de dados para a fase acelerada. A arbitragem continua na taxa nominal, o que mantém o mecanismo de disputa em uma taxa única e conhecida pelos nós.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <table>
+                <thead><tr><th>Característica</th><th>CAN clássico</th><th>CAN FD com BRS=0</th><th>CAN FD com BRS=1</th></tr></thead>
+                <tbody>
+                    <tr><td>Formato do frame</td><td>Clássico</td><td>FD</td><td>FD</td></tr>
+                    <tr><td>Taxa na arbitragem</td><td>Nominal</td><td>Nominal</td><td>Nominal</td></tr>
+                    <tr><td>Taxa no payload</td><td>Nominal</td><td>Nominal</td><td>Taxa de dados configurada</td></tr>
+                    <tr><td>Payload máximo</td><td>8 bytes</td><td>64 bytes</td><td>64 bytes</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">BRS controla a taxa, não o formato nem o comprimento. FDF identifica CAN FD; DLC codifica o comprimento do payload.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="example-title">
+        <h2 id="example-title">Exemplo de configuração</h2>
+        <div class="panel">
+            <p>Em uma interface CAN FD física chamada <code>can0</code>, esta configuração usa 500 kbit/s nominais e 2 Mbit/s na fase de dados:</p>
+            <div class="example">
+                <pre>sudo ip link set can0 type can bitrate 500000 dbitrate 2000000 fd on
+sudo ip link set can0 up</pre>
+            </div>
+            <p>Uma transmissão com BRS habilitado solicita 2 Mbit/s na fase de dados; um frame FD com BRS desabilitado permanece a 500 kbit/s, embora possa transportar mais de 8 bytes.</p>
+            <div class="callout"><strong>Compatibilidade física:</strong> todos os nós CAN FD ativos precisam suportar a configuração nominal e a taxa de dados. A qualidade do transceptor, do cabeamento, da topologia e da temporização limita a taxa utilizável.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="limits-title">
+        <h2 id="limits-title">Cuidados ao validar</h2>
+        <div class="grid">
+            <article class="card purple">
+                <h3>Taxas devem coincidir</h3>
+                <p>Se transmissor e receptores configurarem valores incompatíveis, os bits da fase de dados podem ser amostrados incorretamente, causando erros de frame e retransmissões.</p>
+            </article>
+            <article class="card orange">
+                <h3>vcan não mede bitrate</h3>
+                <p>Uma interface <code>vcan</code> valida o fluxo de software SocketCAN, mas não possui clock de barramento, transceptor nem temporização elétrica real. Ela não comprova que BRS funciona no hardware.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <p>Para detalhes dos campos <code>FDF</code>, <code>BRS</code> e <code>ESI</code>, consulte <a href="12.%20estrutura-frame-canfd.html">Estrutura do frame CAN FD</a>. Para comparar CAN clássico e CAN FD, consulte <a href="can-classic-vs-canfd.html">CAN clássico vs CAN FD</a>.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>A taxa nominal e a taxa de dados configuram temporizações físicas distintas no CAN FD. Consulte o manual do controlador e a especificação da rede antes de habilitar BRS em hardware.</p>
+    </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Guia de DLC e payload de 0 a 8 bytes no CAN clássico, com exemplos e tabela de mensagens de uma ECU fictícia.">
+    <title>DLC e payload CAN: 0 a 8 bytes</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #17252d;
+            --code-ink: #edf4f5;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 870px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 840px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .73rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .byte-list { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 7px; margin: 15px 0; }
+        .byte { padding: 10px 5px; color: #fff; background: var(--purple); text-align: center; font: 700 .85rem "DejaVu Sans Mono", Consolas, monospace; }
+        .byte small { display: block; margin-top: 4px; color: #ece8f5; font: .65rem "Trebuchet MS", sans-serif; }
+        .lengths { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 7px; margin-top: 18px; }
+        .length { padding: 11px 6px; border: 1px solid var(--line); background: #fff; text-align: center; }
+        .length strong { display: block; color: var(--teal-dark); font: 700 1.1rem "DejaVu Sans Mono", Consolas, monospace; }
+        .length span { display: block; color: var(--muted); font-size: .74rem; }
+        .example { margin-top: 18px; padding: 18px; color: var(--code-ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; }
+        .example p { margin: 12px 0 0; color: #cbd8dc; font-size: .9rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: white; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 800px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .table-scroll { overflow-x: auto; }
+            .table-scroll table { min-width: 760px; }
+            .lengths { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+        }
+        @media (max-width: 420px) {
+            .lengths { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            .byte-list { gap: 4px; }
+            .byte { padding-inline: 2px; font-size: .72rem; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Redes embarcadas · CAN clássico</div>
+        <h1>DLC e payload</h1>
+        <p class="lead">No CAN clássico, cada Data Frame transporta de zero a oito bytes de payload. O DLC informa quantos bytes válidos seguem no campo de dados; o significado desses bytes vem do protocolo da ECU.</p>
+        <span class="tag">0–8 bytes · leitura de mensagens · exemplos</span>
+    </header>
+
+    <section aria-labelledby="definitions-title">
+        <h2 id="definitions-title">DLC não é o payload</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>DLC (Data Length Code)</h3>
+                <p>É o código de 4 bits no campo de controle que indica o comprimento do campo de dados de um Data Frame CAN clássico. Para payloads clássicos de 0 a 8 bytes, o valor do DLC corresponde diretamente à quantidade de bytes.</p>
+            </article>
+            <article class="card blue">
+                <h3>Payload</h3>
+                <p>São os bytes de dados efetivamente transportados no frame. O payload pode conter um valor, vários sinais empacotados, contadores, flags ou comandos definidos pela aplicação.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <p>O DLC tem quatro bits porque o campo representa um código. No CAN clássico, o payload máximo continua sendo <strong>8 bytes</strong>; não se pode concluir que um frame clássico transporta até 15 bytes só porque o campo DLC tem 4 bits.</p>
+            <div class="lengths" aria-label="Valores de DLC de zero a oito e seus comprimentos em bytes">
+                <div class="length"><strong>0</strong><span>0 byte</span></div>
+                <div class="length"><strong>1</strong><span>1 byte</span></div>
+                <div class="length"><strong>2</strong><span>2 bytes</span></div>
+                <div class="length"><strong>3</strong><span>3 bytes</span></div>
+                <div class="length"><strong>4</strong><span>4 bytes</span></div>
+                <div class="length"><strong>5</strong><span>5 bytes</span></div>
+                <div class="length"><strong>6</strong><span>6 bytes</span></div>
+                <div class="length"><strong>7</strong><span>7 bytes</span></div>
+                <div class="length"><strong>8</strong><span>8 bytes</span></div>
+            </div>
+            <div class="callout"><strong>DLC 0 é permitido:</strong> um Data Frame pode conter zero bytes de dados. Nesse caso, ID e periodicidade ainda podem ter significado para a rede, mas não há bytes de payload.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="table-title">
+        <h2 id="table-title">Tabela de mensagens de uma ECU fictícia</h2>
+        <p class="section-lead">A tabela abaixo descreve uma ECU inventada chamada ECU-Motor. IDs, períodos, escalas e campos são exemplos didáticos: numa rede real, devem ser definidos pelo protocolo e compartilhados por todos os nós.</p>
+        <div class="panel table-scroll">
+            <table>
+                <thead>
+                    <tr><th>ID</th><th>Mensagem</th><th>Período</th><th>DLC</th><th>Payload de exemplo (hex)</th><th>Interpretação definida pela ECU</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>0x120</code></td><td>Heartbeat</td><td>100 ms</td><td>0</td><td>—</td><td>Frame sem payload; a ECU indica que está ativa pela presença periódica da mensagem.</td></tr>
+                    <tr><td><code>0x121</code></td><td>Estado da ECU</td><td>100 ms</td><td>1</td><td><code>05</code></td><td>Byte 0 como flags: bit 0 = ignição ligada, bit 1 = motor pronto, bit 2 = falha presente. <code>0x05</code> significa ignição ligada e falha presente.</td></tr>
+                    <tr><td><code>0x122</code></td><td>Rotação do motor</td><td>20 ms</td><td>2</td><td><code>A0 0F</code></td><td>Inteiro sem sinal de 16 bits little-endian: raw = <code>0x0FA0</code> = 4000; rotação = raw × 0,25 = 1000 rpm.</td></tr>
+                    <tr><td><code>0x123</code></td><td>Telemetria do veículo</td><td>50 ms</td><td>4</td><td><code>69 03 69 32</code></td><td>Bytes 0–1: velocidade little-endian em décimos de km/h; byte 2: temperatura em °C com offset −40; byte 3: posição do acelerador em %.</td></tr>
+                    <tr><td><code>0x124</code></td><td>Evento de diagnóstico</td><td>Ao ocorrer evento</td><td>8</td><td><code>04 02 01 2A 40 E2 01 00</code></td><td>Byte 0: código; byte 1: subsistema; byte 2: severidade; byte 3: contador; bytes 4–7: tempo de atividade em ms, little-endian.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Os cinco exemplos usam comprimentos diferentes, incluindo 0 e o máximo de 8 bytes. Cada linha é um contrato de aplicação fictício; o ID sozinho não define a escala nem a ordem dos bytes.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="decode-title">
+        <h2 id="decode-title">Decodificando um payload de quatro bytes</h2>
+        <div class="panel">
+            <p>Para a mensagem <code>0x123</code> da tabela, o DLC é 4 e os bytes são <code>69 03 69 32</code>. O receptor interpreta cada grupo conforme a definição da ECU-Motor:</p>
+            <div class="byte-list" aria-label="Quatro bytes de payload">
+                <div class="byte">69<small>Byte 0</small></div>
+                <div class="byte">03<small>Byte 1</small></div>
+                <div class="byte">69<small>Byte 2</small></div>
+                <div class="byte">32<small>Byte 3</small></div>
+                <div class="byte" style="opacity:.35">—<small>Byte 4</small></div>
+                <div class="byte" style="opacity:.35">—<small>Byte 5</small></div>
+                <div class="byte" style="opacity:.35">—<small>Byte 6</small></div>
+                <div class="byte" style="opacity:.35">—<small>Byte 7</small></div>
+            </div>
+            <div class="grid">
+                <article class="card">
+                    <h3>Velocidade</h3>
+                    <p>Os bytes 0–1 são little-endian: <code>0x0369</code> = 873. A escala é 0,1 km/h por unidade, então a velocidade é <strong>87,3 km/h</strong>.</p>
+                </article>
+                <article class="card orange">
+                    <h3>Temperatura e acelerador</h3>
+                    <p><code>0x69</code> = 105; subtraindo o offset 40, a temperatura é <strong>65 °C</strong>. <code>0x32</code> = 50 decimal, logo o acelerador está em <strong>50%</strong>.</p>
+                </article>
+            </div>
+            <div class="callout"><strong>Os bytes esmaecidos não são transmitidos.</strong> O DLC 4 significa que o payload termina após o Byte 3. Não interprete bytes 4–7 como zeros nem como parte da mensagem.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="rules-title">
+        <h2 id="rules-title">Como ler e projetar o campo de dados</h2>
+        <div class="panel">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Leia o ID e o DLC.</strong> O ID seleciona a definição da mensagem; o DLC diz quantos bytes de payload estão presentes no Data Frame.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Separe os bytes por posição.</strong> Byte 0 é o primeiro byte do payload. A ordem de bytes de um sinal multibyte deve vir do protocolo da aplicação, não do número do ID.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Aplique escala, offset e unidade.</strong> Um valor bruto pode precisar de multiplicador e deslocamento para virar rpm, km/h, °C ou outra unidade.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>Não leia além do DLC.</strong> Só os primeiros DLC bytes existem no payload daquele frame. Bytes usados para preencher estruturas de memória não são necessariamente bytes transmitidos.</p></div>
+            </div>
+        </div>
+        <div class="grid" style="margin-top:16px">
+            <article class="card blue">
+                <h3>Remote Frame não leva payload</h3>
+                <p>No CAN clássico, um Remote Frame pode ter DLC indicando o comprimento solicitado, mas não contém bytes de dados. Não confunda esse caso com um Data Frame cujo DLC informa bytes presentes.</p>
+            </article>
+            <article class="card purple">
+                <h3>CAN FD tem regras diferentes</h3>
+                <p>CAN FD pode carregar até 64 bytes e usa códigos DLC de 0 a 15 com mapeamento próprio para comprimentos maiores que 8. A tabela desta página vale somente para CAN clássico.</p>
+            </article>
+        </div>
+    </section>
+
+    <section aria-labelledby="review-title">
+        <h2 id="review-title">Revisão rápida</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>O que o DLC informa?</h3>
+                <p>O comprimento do payload no Data Frame clássico: neste contexto, de 0 a 8 bytes.</p>
+            </article>
+            <article class="card orange">
+                <h3>O DLC explica os sinais?</h3>
+                <p>Não. A especificação da mensagem define campos, ordem dos bytes, escala, offset, unidade e significado.</p>
+            </article>
+            <article class="card blue">
+                <h3>O que significa <code>A0 0F</code>?</h3>
+                <p>Depende do contrato da mensagem. Na tabela fictícia, são 4000 unidades little-endian, escaladas para 1000 rpm.</p>
+            </article>
+        </div>
+    </section>
+
+    <footer>
+        <p>Este material usa CAN clássico e payloads de até 8 bytes. Os IDs e a tabela ECU-Motor são fictícios e servem apenas para demonstrar como documentar um protocolo.</p>
+    </footer>
+</main>
+</body>
+</html>

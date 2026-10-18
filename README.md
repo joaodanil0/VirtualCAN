@@ -4,6 +4,51 @@ Biblioteca C++17 para comunicação com interfaces CAN usando a interface
 `ICanBus`. O projeto inclui a implementação SocketCAN para Linux,
 `SocketCanBus`, e testes executados contra uma interface CAN virtual (`vcan0`).
 
+## Documentação
+
+### Fundamentos do protocolo
+
+1. [Fundamentos do barramento CAN](<docs/1. can-fundamentos.html>): nós,
+   barramento, CAN_H, CAN_L e uma rede com três ECUs.
+2. [Identificadores CAN](<docs/2. identificadores-can.html>): IDs padrão de
+   11 bits e estendidos de 29 bits, interpretados em hexadecimal.
+3. [Frames CAN: Data, RTR e ACK](<docs/3. can-frames-data-rtr-ack.html>):
+   campos do frame clássico e análise de exemplos.
+   - [Aprofundamento: bit stuffing](<docs/8. bit-stuffing-can.html>): por que
+     o CAN insere bits no fluxo e como o receptor os remove.
+   - [Aprofundamento: CRC e integridade](<docs/9. crc-integridade-can.html>):
+     cálculo e detecção de frames corrompidos no CAN clássico.
+   - [Aprofundamento: ACK e detecção de erros](<docs/10. ack-erros-can.html>):
+     ACK, erros de bit/stuffing/CRC/forma e confinamento de erros.
+   - [Aprofundamento: Error Active, Error Passive e Bus Off](<docs/11. estados-erro-can.html>):
+     contadores TEC/REC, transições de estado e recuperação do controlador.
+4. [Arbitragem CAN](<docs/4. arbitragem-can.html>): prioridade e lógica
+   dominante/recessiva, incluindo a comparação entre `0x100` e `0x200`.
+5. [DLC e payload CAN](<docs/5. dlc-payload-can.html>): comprimentos de 0 a
+   8 bytes, exemplos decodificados e tabela de mensagens de uma ECU fictícia.
+6. [CAN clássico vs CAN FD](docs/can-classic-vs-canfd.html): diferenças de
+   payload, taxa de dados e estrutura dos frames.
+    - [Aprofundamento: estrutura do frame CAN FD](<docs/12. estrutura-frame-canfd.html>):
+      campos FDF, BRS e ESI, fases de bitrate, DLC e CRC.
+    - [Aprofundamento: DLC e comprimentos CAN FD](<docs/13. dlc-canfd-mapeamento.html>):
+      tabela dos códigos DLC e payloads de até 64 bytes.
+    - [Aprofundamento: taxa nominal e taxa de dados](<docs/14. taxa-nominal-vs-dados-canfd.html>):
+      diferença entre bitrate nominal, dbitrate e BRS.
+    - [Aprofundamento: CRC e compatibilidade CAN FD](<docs/15. crc-tolerancia-compatibilidade-canfd.html>):
+      detecção de erros e requisitos de interoperabilidade entre nós.
+
+### Laboratório e desenvolvimento
+
+- [Laboratório CAN virtual com vcan](<docs/6. laboratorio-vcan.html>): uso de
+  `candump` e `cansend`, filtros por ID, comparação de payloads e envio periódico
+  com registro da captura.
+- [Laboratório CAN FD com vcan](<docs/16. laboratorio-canfd-vcan.html>): criar
+  `vcanfd0`, enviar frames FD com `cansend` e observar/filtrar com `candump`.
+- [ICanBus e SocketCanBus](docs/icanbus-socketcan.html): abstração da
+  comunicação CAN e implementação SocketCAN da biblioteca.
+- [Protocolo de infotainment do veículo](docs/vehicle-infotainment-protocol.html):
+  exemplo aplicado de requisição, resposta e decodificação de telemetria.
+
 ## Requisitos
 
 - Linux com suporte ao módulo `vcan`;

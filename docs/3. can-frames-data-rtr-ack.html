@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Guia de frames CAN clássicos: Data Frame, RTR, ACK, campos do frame e exemplos analisados.">
+    <title>Frames CAN: Data, RTR e ACK</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #17252d;
+            --code-ink: #edf4f5;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 880px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 850px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .74rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; white-space: nowrap; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        .frame { display: flex; min-width: 850px; margin-top: 18px; overflow-x: auto; border: 1px solid var(--line); }
+        .field { display: grid; min-width: 64px; min-height: 82px; flex: 1; align-content: center; justify-items: center; padding: 9px 6px; border-right: 1px solid #fff; color: white; text-align: center; }
+        .field:last-child { border-right: 0; }
+        .field strong { font: 700 .78rem "Trebuchet MS", sans-serif; }
+        .field small { margin-top: 5px; font: .7rem/1.35 "DejaVu Sans Mono", Consolas, monospace; }
+        .f-start { background: var(--orange); }
+        .f-arb { background: var(--teal); }
+        .f-ctrl { background: var(--blue); }
+        .f-data { background: var(--purple); }
+        .f-crc { background: #647780; }
+        .f-ack { background: #9a5b24; }
+        .f-eof { background: #394d56; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .example { margin-top: 18px; padding: 18px; color: var(--code-ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; }
+        .example p { margin: 12px 0 0; color: #cbd8dc; font-size: .9rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: white; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            th, td { padding: 9px; }
+            td:first-child { white-space: normal; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Redes embarcadas · Anatomia de uma mensagem</div>
+        <h1>Frames CAN: Data, RTR e ACK</h1>
+        <p class="lead">Um frame CAN transporta um identificador, campos de controle e, em um Data Frame, bytes de dados. Acompanhe a estrutura dos campos e veja como interpretar exemplos de dados, solicitação remota e confirmação.</p>
+        <span class="tag">CAN clássico · estrutura de frame · exemplos</span>
+    </header>
+
+    <section aria-labelledby="frame-title">
+        <h2 id="frame-title">Estrutura de um Data Frame padrão</h2>
+        <p class="section-lead">Este é o formato clássico com identificador padrão de 11 bits. Os campos são enviados nesta ordem; o diagrama é conceitual e não está em escala.</p>
+        <div class="panel">
+            <div class="frame" role="img" aria-label="Ordem dos campos do Data Frame CAN clássico padrão: SOF, identificador, RTR, IDE, reservado, DLC, dados, CRC, ACK e EOF">
+                <div class="field f-start"><strong>SOF</strong><small>1 bit</small></div>
+                <div class="field f-arb"><strong>ID</strong><small>11 bits</small></div>
+                <div class="field f-arb"><strong>RTR</strong><small>1 bit</small></div>
+                <div class="field f-ctrl"><strong>IDE + r0</strong><small>2 bits</small></div>
+                <div class="field f-ctrl"><strong>DLC</strong><small>4 bits</small></div>
+                <div class="field f-data"><strong>Dados</strong><small>0 a 8 bytes</small></div>
+                <div class="field f-crc"><strong>CRC</strong><small>15 + delim.</small></div>
+                <div class="field f-ack"><strong>ACK</strong><small>slot + delim.</small></div>
+                <div class="field f-eof"><strong>EOF</strong><small>7 bits</small></div>
+            </div>
+            <p class="caption">Depois do EOF, há ainda um intervalo de intermission de 3 bits recessivos antes de um novo frame. O intervalo não é um campo do frame.</p>
+            <table>
+                <thead>
+                    <tr><th>Campo</th><th>Tamanho / valor</th><th>Função</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>SOF (Start Of Frame)</td><td>1 bit dominante (0)</td><td>Significa “início do frame” (ou “início do quadro”); inicia a transmissão e sincroniza os nós.</td></tr>
+                    <tr><td>Identificador</td><td>11 bits no formato padrão; 29 bits no estendido</td><td>Identifica o tipo/prioridade da mensagem. O ID não é necessariamente o endereço da ECU de origem ou destino.</td></tr>
+                    <tr><td>RTR (Remote Transmission Request)</td><td>Dominante (0) em Data Frame; recessivo (1) em Remote Frame</td><td>Significa “solicitação de transmissão remota”. Distingue frame com dados de solicitação remota no CAN clássico; o campo está na arbitragem.</td></tr>
+                    <tr><td>IDE (Identifier Extension) + r0 (reserved bit 0)</td><td>IDE identifica padrão/estendido; bits reservados são transmitidos nos valores definidos pelo protocolo</td><td>IDE significa “extensão do identificador”. No formato padrão clássico, IDE=0 e r0=0; r0 é o bit reservado de posição 0. O formato estendido possui estrutura de arbitragem própria e bits reservados adicionais.</td></tr>
+                    <tr><td>DLC (Data Length Code)</td><td>4 bits</td><td>Significa “código do comprimento dos dados” e indica o comprimento: 0 a 8 bytes no CAN clássico. Em Remote Frame informa o comprimento solicitado, embora o frame não transporte payload.</td></tr>
+                    <tr><td>Dados</td><td>0 a 8 bytes</td><td>Payload do Data Frame. A interpretação de bytes e sinais depende do protocolo da aplicação.</td></tr>
+                    <tr><td>CRC (Cyclic Redundancy Check)</td><td>Sequência de 15 bits + delimitador recessivo</td><td>Significa “verificação cíclica de redundância” e permite detectar erros de transmissão. O delimitador separa o campo de CRC do campo ACK. Veja o <a href="9.%20crc-integridade-can.html">guia detalhado de CRC</a>.</td></tr>
+                    <tr><td>ACK (Acknowledge)</td><td>Slot de 1 bit + delimitador recessivo</td><td>Significa “confirmação”. Um receptor que validou o frame sinaliza o slot com nível dominante; o transmissor envia recessivo nesse instante.</td></tr>
+                    <tr><td>EOF (End Of Frame)</td><td>7 bits recessivos</td><td>Significa “fim do frame” e marca o encerramento do quadro.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>Bits de stuffing:</strong> no CAN clássico, o transmissor insere um bit complementar após cinco bits consecutivos iguais desde SOF até a sequência CRC. Os bits inseridos não são campos adicionais do payload; o receptor os remove durante a decodificação. Por isso, a quantidade de bits efetivamente observada no fio pode variar. Veja o <a href="8.%20bit-stuffing-can.html">guia detalhado de bit stuffing</a>.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="extended-title">
+        <h2 id="extended-title">O que muda no identificador estendido?</h2>
+        <div class="panel">
+            <p>O formato estendido ainda é um frame CAN clássico, mas usa 29 bits de identificador e mais campos na arbitragem. Ele não é simplesmente um formato padrão com zeros acrescentados.</p>
+            <div class="frame" role="img" aria-label="Campos de arbitragem de um frame estendido: ID base, SRR, IDE, ID estendido e RTR">
+                <div class="field f-arb"><strong>ID base</strong><small>11 bits</small></div>
+                <div class="field f-ctrl"><strong>SRR</strong><small>1 bit</small></div>
+                <div class="field f-ctrl"><strong>IDE</strong><small>1 bit</small></div>
+                <div class="field f-arb"><strong>ID estendido</strong><small>18 bits</small></div>
+                <div class="field f-arb"><strong>RTR</strong><small>1 bit</small></div>
+                <div class="field f-crc"><strong>Controle, dados, CRC, ACK e EOF</strong><small>seguem no frame</small></div>
+            </div>
+            <p class="caption">O ID completo tem 11 + 18 = 29 bits. SRR (Substitute Remote Request) ocupa, no formato estendido, a posição em que estaria o RTR do formato padrão e é sempre recessivo (1). Assim, quando um frame padrão e um estendido começam com os mesmos 11 bits de ID, o padrão vence a arbitragem: o RTR dominante de um Data Frame padrão vence o SRR recessivo; se for Remote Frame, o bit IDE padrão dominante vence o IDE recessivo do estendido. O SRR ajuda, portanto, a preservar a prioridade do formato padrão. IDE (Identifier Extension) indica o formato estendido; os campos seguintes continuam com controle, payload e verificação.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="data-title">
+        <h2 id="data-title">Data Frame: transmissão de dados</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>Exemplo analisado</h3>
+                <p>Considere um frame padrão com ID <code>0x123</code> e três bytes <code>11 22 33</code>:</p>
+                <div class="example">
+                    <pre>can0  123  [3]  11 22 33</pre>
+                    <p>Interface can0; ID 0x123; DLC=3; payload 0x11, 0x22, 0x33. A saída de candump mostra o ID em hexadecimal e os bytes separadamente.</p>
+                </div>
+            </article>
+            <article class="card blue">
+                <h3>Campos interpretados</h3>
+                <p><strong>SOF:</strong> 0. <strong>ID:</strong> 0x123 = 291 = <code>00100100011</code> em 11 bits. <strong>RTR:</strong> 0, pois é um Data Frame. <strong>IDE:</strong> 0, formato padrão. <strong>DLC:</strong> 3 (<code>0011</code>).</p>
+                <p><strong>Payload:</strong> 3 bytes, enviados byte a byte, mais significativo primeiro dentro de cada byte. CRC depende dos bits do frame e é calculado pelo protocolo; o ACK depende da resposta dos receptores na rede.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <h3>Exemplo do projeto: mensagem de motor</h3>
+            <p>O exemplo <code>arduino_rtr.cpp</code> transmite texto ASCII no ID <code>0x12</code>. A string <code>EV-ENGNR</code> ocupa 8 bytes:</p>
+            <div class="example">
+                <pre>can0  012  [8]  45 56 2D 45 4E 47 4E 52</pre>
+                <p>Os bytes hexadecimais correspondem aos caracteres ASCII E, V, -, E, N, G, N, R. O CAN só transporta esses bytes; é a aplicação que decide interpretá-los como texto.</p>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="rtr-title">
+        <h2 id="rtr-title">Remote Frame (RTR): solicitação sem payload</h2>
+        <div class="grid">
+            <article class="card orange">
+                <h3>Como funciona</h3>
+                <p>Um Remote Frame CAN clássico pede os dados associados a um identificador. Ele contém o ID e um DLC que indica o comprimento esperado, mas <strong>não contém campo de dados</strong>. Seu bit RTR é recessivo (1).</p>
+                <p>Um nó que fornece aquela mensagem pode responder com um Data Frame usando o mesmo ID e os bytes pedidos. Essa resposta não é automática: depende de um nó e de uma aplicação configurados para atender à solicitação.</p>
+            </article>
+            <article class="card">
+                <h3>Exemplo analisado</h3>
+                <p>Uma solicitação do ID <code>0x012</code> para três bytes pode aparecer assim, conforme a ferramenta:</p>
+                <div class="example">
+                    <pre>cansend can0 012#R3
+can0    012   [3]  remote request</pre>
+                    <p><code>R3</code> indica Remote Frame com DLC 3. O número 3 é o tamanho solicitado, não a quantidade de bytes que acompanham o frame RTR. Uma resposta possível seria um frame de dados com ID 0x012, DLC 3 e três bytes definidos pela aplicação.</p>
+                </div>
+            </article>
+        </div>
+        <div class="callout"><strong>Limite importante:</strong> Remote Frames pertencem ao CAN clássico. CAN FD não suporta Remote Frames; para solicitar dados numa aplicação CAN FD, use uma mensagem de solicitação definida pelo protocolo da aplicação.</div>
+        <p class="caption">No exemplo <code>arduino_rtr.cpp</code> deste repositório, o simulador envia o Data Frame <code>EV-ENGNR</code> e também um RTR com DLC 3 no ID <code>0x12</code>. Ele demonstra a emissão e observação dos dois tipos de frame; não implementa, por si só, um nó que responde ao pedido remoto.</p>
+    </section>
+
+    <section aria-labelledby="ack-title">
+        <h2 id="ack-title">ACK: confirmação de recepção no barramento</h2>
+        <div class="panel">
+            <div class="grid">
+                <article class="card blue">
+                    <h3>O slot de ACK</h3>
+                    <p>O transmissor envia recessivo (1) durante o slot de ACK. Um ou mais nós que receberam o frame sem detectar erro dirigem o barramento para dominante (0) nesse slot. O delimitador de ACK seguinte é recessivo.</p>
+                </article>
+                <article class="card purple">
+                    <h3>O que ACK não significa</h3>
+                    <p>ACK não confirma que a ECU destinatária lógica existe, que aceitou o ID, que interpretou os dados ou que executou uma ação. Confirma apenas que pelo menos um nó participante sinalizou recepção válida no nível do protocolo.</p>
+                </article>
+            </div>
+            <table>
+                <thead>
+                    <tr><th>O transmissor observa no slot</th><th>Interpretação</th><th>O que fazer com essa informação</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Dominante (0)</td><td>Ao menos um receptor sinalizou ACK.</td><td>O frame foi confirmado no barramento; a aplicação ainda pode precisar de confirmação funcional própria.</td></tr>
+                    <tr><td>Recessivo (1)</td><td>Nenhum receptor sinalizou ACK.</td><td>O transmissor detecta erro de ACK e, normalmente, tenta retransmitir de acordo com o protocolo.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>Por que candump não mostra “ACK=0” no texto do frame?</strong> O ACK é um bit do nível físico observado durante a transmissão. Ferramentas de captura normalmente exibem o frame decodificado (ID, flags, DLC e dados), não a forma de onda nem o bit do slot ACK. A ausência de um campo ACK na linha impressa não quer dizer que o frame não foi confirmado.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="compare-title">
+        <h2 id="compare-title">Data Frame, Remote Frame e ACK: não confunda</h2>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr><th>Item</th><th>Onde aparece</th><th>Quem o gera</th><th>Significado</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Data Frame</td><td>Como frame completo</td><td>Nó que publica dados</td><td>Carrega ID e de 0 a 8 bytes no CAN clássico; RTR=0.</td></tr>
+                    <tr><td>Remote Frame (RTR)</td><td>Como frame completo clássico</td><td>Nó solicitante</td><td>Pede dados por ID, informa o comprimento no DLC e não carrega payload; RTR=1.</td></tr>
+                    <tr><td>ACK</td><td>Dentro de cada frame transmitido</td><td>Um ou mais receptores</td><td>Confirma recepção válida no nível do protocolo; não é um frame separado nem uma confirmação de aplicação.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <footer>
+        <p>Esta página descreve frames CAN clássicos. Consulte o <a href="10.%20ack-erros-can.html">guia de ACK e mecanismos de detecção de erros</a> para aprofundar bit error, stuff error, CRC error, form error e ACK error. CAN FD reutiliza conceitos como ID e ACK, mas altera campos de controle, CRC e limites de payload; consulte a documentação específica antes de decodificar frames FD.</p>
+    </footer>
+</main>
+</body>
+</html>

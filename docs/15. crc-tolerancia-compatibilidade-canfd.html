@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="CRC do CAN FD, detecção de erros, limites de tolerância e requisitos de compatibilidade entre controladores, taxas e transceptores.">
+    <title>CRC, erros e compatibilidade no CAN FD</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --red: #a53e3e;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 900px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 870px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card.red { border-top-color: var(--red); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .72rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        .example { margin-top: 18px; padding: 18px; color: var(--ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.7 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .example p { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">CAN FD · Integridade e interoperabilidade</div>
+        <h1>CRC, tolerância a erros e compatibilidade</h1>
+        <p class="lead">CAN FD aumenta o payload e pode acelerar a fase de dados, mas mantém verificações de integridade e depende de compatibilidade entre todos os nós ativos. Veja como funcionam o CRC FD, a reação a erros e os requisitos para integrar os dispositivos com segurança.</p>
+        <span class="tag">CRC-17 · CRC-21 · erro · compatibilidade</span>
+    </header>
+
+    <section aria-labelledby="crc-title">
+        <h2 id="crc-title">CRC no CAN FD</h2>
+        <div class="panel">
+            <p>O controlador transmissor calcula o CRC a partir dos campos protegidos do frame. O receptor calcula sua própria verificação com os bits que recebeu e compara o resultado com a sequência CRC transmitida. O CAN FD amplia essa proteção para acomodar payloads maiores e sua codificação de stuffing.</p>
+            <table>
+                <thead><tr><th>Tamanho do payload FD</th><th>Sequência CRC</th><th>Observação</th></tr></thead>
+                <tbody>
+                    <tr><td>Comprimentos válidos até 16 bytes (0–8, 12, 16)</td><td>CRC-17</td><td>Usada nos comprimentos FD válidos de até 16 bytes.</td></tr>
+                    <tr><td>Comprimentos válidos de 20 a 64 bytes (20, 24, 32, 48, 64)</td><td>CRC-21</td><td>Usada nos comprimentos FD válidos maiores que 16 bytes.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Os comprimentos FD maiores que 8 bytes são discretos (12, 16, 20, 24, 32, 48 ou 64), conforme o código DLC.</p>
+            <p>O campo CRC FD também usa informações de contagem/paridade de stuffing e bits fixos definidos pelo formato. O controlador CAN normalmente gera e confere esses campos; a aplicação fornece o identificador, as flags e o payload.</p>
+            <div class="callout"><strong>Uma divergência invalida o frame:</strong> se o CRC calculado pelo receptor não coincidir com o recebido, o nó detecta erro, sinaliza a falha conforme seu estado de erro e não entrega o frame como mensagem válida.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="tolerance-title">
+        <h2 id="tolerance-title">O que significa tolerância a erros</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>Detectar, descartar e sinalizar</h3>
+                <p>Além do CRC, CAN FD verifica bits monitorados, stuffing, campos de formato e ACK. Quando um controlador detecta erro, o frame não é aceito como válido e o erro é sinalizado no barramento.</p>
+            </article>
+            <article class="card orange">
+                <h3>Retransmitir, quando permitido</h3>
+                <p>Controladores normalmente tentam retransmitir frames que falharam, mas o comportamento depende da configuração e do estado do nó. Erros persistentes podem levar a Error Passive ou Bus Off.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>O receptor detecta:</strong> por exemplo, o CRC recebido difere do CRC calculado a partir do frame.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>O frame é rejeitado:</strong> os nós não o tratam como uma mensagem de aplicação válida.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>O controlador sinaliza erro:</strong> outros nós são informados pelo mecanismo de error frame.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>O sistema tenta se recuperar:</strong> o emissor pode retransmitir; falhas contínuas atualizam TEC/REC e podem resultar em Bus Off.</p></div>
+            </div>
+            <div class="callout"><strong>Detectar não é corrigir:</strong> o CRC não reconstitui bytes corrompidos nem garante entrega. A camada de aplicação ainda pode precisar de timeout, confirmação funcional e política de repetição.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="limits-title">
+        <h2 id="limits-title">Limites da proteção</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>Não é uma garantia matemática absoluta</h3>
+                <p>O CRC detecta muitas classes de corrupção, mas uma alteração específica pode, em princípio, produzir o mesmo valor de verificação. A probabilidade residual depende do comprimento e do padrão de erro.</p>
+            </article>
+            <article class="card purple">
+                <h3>Não autentica a mensagem</h3>
+                <p>CRC é mecanismo de integridade contra erros acidentais, não criptografia. Ele não prova quem enviou o frame e não impede que uma mensagem maliciosa seja modificada e tenha um CRC válido recalculado.</p>
+            </article>
+            <article class="card red">
+                <h3>Não remove a causa física</h3>
+                <p>Erros repetidos podem ser consequência de taxa incompatível, ruído, transceptor inadequado, terminação incorreta ou falha de cabeamento. A retransmissão não conserta a rede.</p>
+            </article>
+        </div>
+    </section>
+
+    <section aria-labelledby="compat-title">
+        <h2 id="compat-title">Requisitos de compatibilidade da rede</h2>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Requisito</th><th>O que deve coincidir ou ser suportado</th><th>Risco se não atender</th></tr></thead>
+                <tbody>
+                    <tr><td>Formato CAN FD</td><td>Todos os nós ativos precisam suportar CAN FD ou uma operação explicitamente tolerante a FD.</td><td>Um controlador apenas CAN clássico pode interpretar o indicador FD como formato inválido, sinalizar erro e perturbar a comunicação.</td></tr>
+                    <tr><td>Bitrate nominal</td><td>Todos os controladores devem usar bit timing compatível para arbitragem e fases nominais.</td><td>Bits amostrados fora do tempo correto causam erro de bit, CRC ou forma.</td></tr>
+                    <tr><td>Bitrate de dados</td><td>Se frames usam BRS=1, todos os nós participantes devem suportar e configurar a mesma taxa e temporização de dados.</td><td>Um nó que amostra em outra taxa pode perder a sincronização e gerar erros.</td></tr>
+                    <tr><td>Hardware físico</td><td>Controladores, transceptores, cabeamento, terminação, topologia e sample point devem suportar as taxas selecionadas.</td><td>A comunicação pode falhar mesmo que o software e os valores de configuração pareçam corretos.</td></tr>
+                    <tr><td>Variante do protocolo</td><td>Use controladores configurados para a mesma variante normativa CAN FD, preferencialmente ISO CAN FD interoperável.</td><td>Implementações antigas ou experimentais podem usar detalhes de CRC incompatíveis.</td></tr>
+                    <tr><td>Formato de mensagem</td><td>Todos os nós devem concordar com IDs, formato padrão/estendido, DLC e layout do payload.</td><td>Um frame válido no nível CAN ainda pode ser interpretado incorretamente pela aplicação.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>Um nó clássico não é automaticamente compatível:</strong> CAN FD pode transmitir frames clássicos, mas quando frames FD são usados, controladores CAN clássico sem tolerância FD não devem permanecer como nós ativos no mesmo barramento.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="example-title">
+        <h2 id="example-title">Exemplo de configuração física</h2>
+        <div class="panel">
+            <p>Em hardware compatível, um exemplo de configuração SocketCAN usa <code>bitrate</code> nominal e <code>dbitrate</code> para a fase de dados:</p>
+            <div class="example">
+                <pre>sudo ip link set can0 down
+sudo ip link set can0 type can bitrate 500000 dbitrate 2000000 fd on
+sudo ip link set can0 up</pre>
+                <p>Com essa configuração, frames FD com BRS habilitado solicitam 2 Mbit/s na fase de dados; frames com BRS desabilitado continuam a 500 kbit/s. Ajuste as taxas às capacidades de todos os nós e da rede física.</p>
+            </div>
+            <p>Uma interface virtual <code>vcan</code> pode testar a criação, o envio e a recepção de frames pela pilha de software, mas não valida CRC físico, sample point, transceptores, interoperabilidade elétrica ou taxa BRS real.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="related-title">
+        <h2 id="related-title">Guias relacionados</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>Formato do frame</h3>
+                <p>Consulte <a href="12.%20estrutura-frame-canfd.html">Estrutura do frame CAN FD</a> para FDF, BRS, ESI, DLC e ordem dos campos.</p>
+            </article>
+            <article class="card orange">
+                <h3>Confinamento de erros</h3>
+                <p>Consulte <a href="11.%20estados-erro-can.html">Error Active, Error Passive e Bus Off</a> para os estados e contadores do controlador.</p>
+            </article>
+        </div>
+    </section>
+
+    <footer>
+        <p>Os limites reais dependem da especificação CAN FD adotada e das folhas de dados dos controladores e transceptores. Faça validação física antes de usar a taxa configurada em produção.</p>
+    </footer>
+</main>
+</body>
+</html>

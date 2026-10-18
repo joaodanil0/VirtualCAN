@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Laboratório prático com vcan0, candump e cansend: comparar payloads de 1, 4 e 8 bytes, filtrar IDs e registrar transmissões periódicas.">
+    <title>Laboratório CAN virtual com vcan</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #17252d;
+            --code-ink: #edf4f5;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 870px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 850px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .73rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .table-scroll { overflow-x: auto; }
+        .code-block { margin-top: 16px; padding: 18px; overflow-x: auto; color: var(--code-ink); background: var(--code); border-left: 4px solid var(--orange); }
+        .code-block pre { margin: 0; font: .88rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        details.script-source { margin-top: 20px; border: 1px solid var(--line); background: #fff; }
+        details.script-source summary { padding: 14px 17px; color: var(--teal-dark); cursor: pointer; font: 700 .95rem "Trebuchet MS", sans-serif; }
+        details.script-source .code-block { margin: 0; border-left: 0; border-top: 1px solid var(--line); color: var(--ink); background: #f9fbfa; }
+        details.script-source .code-block code { padding: 0; color: inherit; background: transparent; font: inherit; }
+        .code-caption { margin: 12px 0 0; color: #cbd8dc; font-size: .9rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: white; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .table-scroll table { min-width: 740px; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Laboratório · SocketCAN · Linux</div>
+        <h1>Prática com CAN virtual</h1>
+        <p class="lead">Use <code>vcan0</code> para enviar e observar frames CAN sem hardware físico. Neste roteiro você compara payloads de 1, 4 e 8 bytes, filtra mensagens pelo identificador e executa um transmissor periódico que grava a captura.</p>
+        <span class="tag">vcan0 · candump · cansend</span>
+    </header>
+
+    <section aria-labelledby="vcan-title">
+        <h2 id="vcan-title">O que é VCAN e por que foi desenvolvido?</h2>
+        <div class="panel">
+            <p><strong>VCAN</strong> (Virtual CAN) é o dispositivo CAN virtual do Linux, integrado à interface SocketCAN. Ele cria interfaces, como <code>vcan0</code>, para que programas e ferramentas troquem frames CAN pelo kernel sem precisar de uma placa CAN, transceptor ou cabeamento físico.</p>
+            <p>Foi desenvolvido para facilitar a criação, o teste e a depuração de software CAN em um ambiente controlado e acessível. Assim, desenvolvedores podem exercitar aplicações, observar mensagens e automatizar testes mesmo sem o veículo ou o hardware final conectado.</p>
+            <p>O VCAN reproduz o caminho de comunicação usado pelas aplicações SocketCAN, mas não reproduz as propriedades elétricas nem a temporização de um barramento real. Portanto, é adequado para testes de software e integração, não para validar transceptores, bitrate físico, ruído ou sinalização elétrica.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="requirements-title">
+        <h2 id="requirements-title">Preparar o ambiente</h2>
+        <div class="panel">
+            <p>O laboratório requer Linux com suporte a <code>vcan</code> e os utilitários <code>candump</code> e <code>cansend</code>, disponíveis no pacote <code>can-utils</code>. Crie e ative uma interface virtual:</p>
+            <div class="code-block">
+                <pre>sudo apt install can-utils</pre>
+            </div>
+            <p>Depois, carregue o módulo e prepare a interface:</p>
+            <div class="code-block">
+                <pre>sudo modprobe vcan
+sudo ip link add dev vcan0 type vcan
+sudo ip link set dev vcan0 up</pre>
+            </div>
+            <p class="caption">Se <code>vcan0</code> já existir, não repita o comando <code>ip link add</code>; confirme o estado com <code>ip link show dev vcan0</code>. A criação e a ativação da interface exigem permissões administrativas.</p>
+            <div class="callout"><strong>Sem hardware físico:</strong> <code>vcan</code> permite exercitar sockets CAN e ferramentas no mesmo computador, mas não simula níveis elétricos, bitrate real, ruído, transceptores ou temporização física de um veículo.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="monitor-title">
+        <h2 id="monitor-title">1. Observar mensagens com candump</h2>
+        <div class="panel">
+            <p>Abra um terminal para observar todos os frames que passam pela interface:</p>
+            <div class="code-block"><pre>candump vcan0</pre></div>
+            <p>Deixe o comando em execução. Em um segundo terminal, envie os frames da próxima seção. A captura mostra o ID, o DLC entre colchetes e os bytes hexadecimais do payload.</p>
+            <div class="example">
+                <pre>vcan0  123   [1]  AA
+vcan0  124   [4]  11 22 33 44
+vcan0  125   [8]  00 11 22 33 44 55 66 77</pre>
+                <p>Saída ilustrativa esperada para os três comandos seguintes; horários, espaçamento e formatação podem variar conforme a versão do candump.</p>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="send-title">
+        <h2 id="send-title">2. Enviar IDs e payloads diferentes com cansend</h2>
+        <div class="panel">
+            <p>O formato básico para um Data Frame é <code>cansend interface ID#payload</code>. O ID e os bytes são escritos em hexadecimal; cada par de dígitos do payload representa um byte.</p>
+            <div class="code-block">
+                <pre>cansend vcan0 123#AA
+cansend vcan0 124#11223344
+cansend vcan0 125#0011223344556677</pre>
+            </div>
+            <p class="caption">Os três IDs são padrão de 11 bits. Os payloads têm, respectivamente, 1, 4 e 8 bytes. Na notação do cansend não se escreve <code>0x</code> antes do ID; <code>#</code> separa ID e dados.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="compare-title">
+        <h2 id="compare-title">3. Comparar frames de 1, 4 e 8 bytes</h2>
+        <div class="panel table-scroll">
+            <table>
+                <thead><tr><th>ID</th><th>DLC</th><th>Payload enviado</th><th>Bytes no payload</th><th>O que observar</th></tr></thead>
+                <tbody>
+                    <tr><td><code>0x123</code></td><td>1</td><td><code>AA</code></td><td>1</td><td>Um único byte de dados.</td></tr>
+                    <tr><td><code>0x124</code></td><td>4</td><td><code>11 22 33 44</code></td><td>4</td><td>Quatro bytes; a ordem aparece igual à sequência enviada.</td></tr>
+                    <tr><td><code>0x125</code></td><td>8</td><td><code>00 11 22 33 44 55 66 77</code></td><td>8</td><td>Payload máximo de um Data Frame CAN clássico.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>O que muda:</strong> crescem o DLC e o campo de dados. O identificador não define o comprimento nem o significado dos bytes. Na rede física, o número total de bits do frame também depende de campos de controle e bit stuffing; vcan não mede duração de transmissão no fio.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="filter-title">
+        <h2 id="filter-title">4. Filtrar por identificador</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>Somente o ID 0x123</h3>
+                <div class="code-block"><pre>candump vcan0,123:7FF</pre></div>
+                <p>O filtro compara os 11 bits do identificador padrão. Enquanto ele estiver rodando, envie os três frames: somente as mensagens de <code>0x123</code> devem aparecer.</p>
+            </article>
+            <article class="card blue">
+                <h3>Somente o ID 0x124</h3>
+                <div class="code-block"><pre>candump vcan0,124:7FF</pre></div>
+                <p>Troque o valor antes dos dois-pontos para selecionar outro ID. A máscara <code>7FF</code> marca todos os 11 bits do ID padrão como relevantes no filtro.</p>
+            </article>
+        </div>
+        <p class="caption">Execute o filtro em um terminal separado; pare a captura com <code>Ctrl+C</code>. Os comandos acima são para IDs padrão usados neste laboratório.</p>
+    </section>
+
+    <section aria-labelledby="script-title">
+        <h2 id="script-title">5. Enviar periodicamente e registrar a captura</h2>
+        <div class="panel">
+            <p>O programa deste tópico está incluído como código nesta página. Para executá-lo, expanda <strong>“Ver o código completo do script”</strong>, copie todo o conteúdo e salve em um arquivo chamado <code>vcan_demo.sh</code>. O código inicia <code>candump</code>, transmite os frames com <code>cansend</code> e registra a captura automaticamente; não é necessário iniciar um segundo candump em outro terminal.</p>
+            <details class="script-source">
+                <summary>Ver o código completo do script para copiar</summary>
+                <div class="code-block"><pre><code>#!/usr/bin/env bash
+set -Eeuo pipefail
+
+interface=${1:-vcan0}
+cycles=${2:-10}
+log_file=${3:-"vcan-demo-$(date +%Y%m%d-%H%M%S).log"}
+capture_pid=
+
+if [[ ! $cycles =~ ^[1-9][0-9]*$ ]]; then
+    printf 'Erro: ciclos deve ser um inteiro positivo.\n' &gt;&amp;2
+    printf 'Uso: %s [interface] [ciclos] [arquivo-de-log]\n' "$0" &gt;&amp;2
+    exit 2
+fi
+
+for command_name in ip candump cansend; do
+    if ! command -v "$command_name" &gt;/dev/null 2&gt;&amp;1; then
+        printf 'Erro: comando obrigatório não encontrado: %s\n' "$command_name" &gt;&amp;2
+        exit 127
+    fi
+done
+
+if ! ip link show dev "$interface" &gt;/dev/null 2&gt;&amp;1; then
+    printf 'Erro: interface CAN "%s" não existe ou não está acessível.\n' "$interface" &gt;&amp;2
+    printf 'Ative uma interface vcan antes de executar o script.\n' &gt;&amp;2
+    exit 1
+fi
+
+if [[ -e $log_file ]]; then
+    printf 'Erro: o arquivo de log já existe; escolha outro caminho: %s\n' "$log_file" &gt;&amp;2
+    exit 1
+fi
+
+mkdir -p -- "$(dirname -- "$log_file")"
+: &gt; "$log_file"
+
+candump -L -t a "$interface" &gt; "$log_file" 2&gt;&amp;1 &amp;
+capture_pid=$!
+
+stop_capture()
+{
+    if [[ -z $capture_pid ]]; then
+        return 0
+    fi
+
+    local status=0
+    if kill -0 "$capture_pid" 2&gt;/dev/null; then
+        kill -INT "$capture_pid"
+    fi
+    wait "$capture_pid" || status=$?
+    capture_pid=
+
+    if [[ $status -ne 0 &amp;&amp; $status -ne 130 ]]; then
+        printf 'Erro: candump encerrou com status %s; consulte %s\n' "$status" "$log_file" &gt;&amp;2
+        return "$status"
+    fi
+}
+
+trap stop_capture EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+sleep 0.2
+if ! kill -0 "$capture_pid" 2&gt;/dev/null; then
+    status=0
+    wait "$capture_pid" || status=$?
+    capture_pid=
+    printf 'Erro: candump não iniciou (status %s); consulte %s\n' "$status" "$log_file" &gt;&amp;2
+    exit 1
+fi
+
+printf 'Capturando em %s; interface=%s; ciclos=%s\n' "$log_file" "$interface" "$cycles"
+for ((cycle = 1; cycle &lt;= cycles; cycle++)); do
+    printf '[%s/%s] enviando IDs 123 (1 byte), 124 (4 bytes), 125 (8 bytes)\n' \
+        "$cycle" "$cycles"
+    cansend "$interface" 123#AA
+    cansend "$interface" 124#11223344
+    cansend "$interface" 125#0011223344556677
+
+    if ((cycle &lt; cycles)); then
+        sleep 1
+    fi
+done
+
+printf 'Envio concluído. Frames capturados em: %s\n' "$log_file"</code></pre></div>
+            </details>
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Prepare:</strong> confirme que <code>vcan0</code> está ativa e que <code>can-utils</code> está instalado, como nas etapas anteriores.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Copie:</strong> expanda o bloco de código abaixo, copie o script inteiro e salve como <code>vcan_demo.sh</code>. A partir do terminal, vá até a pasta onde salvou o arquivo.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Execute:</strong> rode o script com Bash. Ele inicia a captura antes de transmitir para reduzir o risco de perder os primeiros frames.</p></div>
+            </div>
+            <p>Com os valores padrão, execute:</p>
+            <div class="code-block">
+                <pre>bash vcan_demo.sh</pre>
+            </div>
+            <p>Para passar os argumentos explicitamente, use:</p>
+            <div class="code-block">
+                <pre>bash vcan_demo.sh vcan0 5 /tmp/vcan-demo-5-ciclos.log</pre>
+                <p class="code-caption">O caminho de log escolhido não pode existir ainda: por segurança, o script não sobrescreve arquivos.</p>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Argumento</th><th>Posição</th><th>Padrão</th><th>O que controla</th></tr></thead>
+                    <tbody>
+                        <tr><td>Interface</td><td>1</td><td><code>vcan0</code></td><td>Interface CAN virtual onde candump escuta e cansend transmite. Ela precisa existir e estar ativa.</td></tr>
+                        <tr><td>Ciclos</td><td>2</td><td><code>10</code></td><td>Número inteiro positivo de grupos a enviar. Cada ciclo transmite os três frames e aguarda cerca de 1 segundo antes do próximo.</td></tr>
+                        <tr><td>Arquivo de log</td><td>3</td><td><code>vcan-demo-AAAAMMDD-HHMMSS.log</code></td><td>Caminho para gravar a saída do candump. Por padrão, o arquivo timestampado é criado na pasta de onde o comando foi executado.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="caption">Com 10 ciclos, o script envia 30 frames (10 de cada ID) em aproximadamente 9 segundos, além do tempo de inicialização. Os três frames de cada ciclo são enviados em sequência; a pausa de 1 segundo ocorre entre os ciclos.</p>
+
+            <p>Durante a execução, o terminal informa o progresso e o caminho do log. Ao terminar, copie esse caminho para consultar a captura:</p>
+            <div class="example">
+                <pre>Capturando em /tmp/vcan-demo-5-ciclos.log; interface=vcan0; ciclos=5
+[1/5] enviando IDs 123 (1 byte), 124 (4 bytes), 125 (8 bytes)
+...
+Envio concluído. Frames capturados em: /tmp/vcan-demo-5-ciclos.log</pre>
+                <p>A saída é ilustrativa. O caminho e os timestamps dependem dos argumentos e do momento em que o script for executado.</p>
+            </div>
+            <p>O arquivo contém as mensagens capturadas pelo candump em formato de log, com timestamp:</p>
+            <div class="example">
+                <pre>(timestamp) vcan0 123#AA
+(timestamp) vcan0 124#11223344
+(timestamp) vcan0 125#0011223344556677</pre>
+                <p>Formato ilustrativo de um trecho do log em modo <code>-L</code>. O arquivo real inclui timestamps gerados no momento da captura.</p>
+            </div>
+            <p>Para consultar os últimos frames do exemplo com caminho personalizado, execute:</p>
+            <div class="code-block"><pre>tail -n 12 /tmp/vcan-demo-5-ciclos.log</pre></div>
+            <p class="caption">Se interromper com <code>Ctrl+C</code>, o script encerra candump e mantém no arquivo as mensagens capturadas até aquele momento. O log contém os frames; as mensagens de progresso aparecem no terminal.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="review-title">
+        <h2 id="review-title">Revisão e diagnóstico</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>Nada aparece?</h3>
+                <p>Confirme que <code>vcan0</code> existe e está ativa, e que candump e cansend usam o mesmo nome de interface.</p>
+            </article>
+            <article class="card orange">
+                <h3>O DLC está diferente?</h3>
+                <p>Conte os pares hexadecimais do payload: 2 dígitos = 1 byte. O DLC deve ser 1, 4 e 8 nos exemplos.</p>
+            </article>
+            <article class="card blue">
+                <h3>O filtro mostra outros IDs?</h3>
+                <p>Confira o ID e a máscara. <code>123:7FF</code> filtra os 11 bits do ID padrão <code>0x123</code>.</p>
+            </article>
+        </div>
+        <div class="callout"><strong>Segurança:</strong> execute este transmissor apenas em uma interface virtual de teste. Em um barramento físico, frames de teste podem interferir nos módulos conectados.</div>
+    </section>
+
+    <footer>
+        <p>Este roteiro usa CAN clássico com até 8 bytes por frame. Uma interface vcan valida o fluxo de dados via SocketCAN, não o comportamento elétrico nem os tempos de uma rede CAN física.</p>
+    </footer>
+</main>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Tabela detalhada de DLC CAN FD e mapeamento de códigos 0 a 15 para comprimentos de payload de 0 a 64 bytes.">
+    <title>DLC no CAN FD: código e comprimento</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1120px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 870px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 830px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .73rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .map td:nth-child(2), .map td:nth-child(4), .map th:nth-child(2), .map th:nth-child(4) { text-align: center; }
+        .example { margin-top: 18px; padding: 18px; color: var(--ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.7 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .example p { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            th, td { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">CAN FD · Comprimento do payload</div>
+        <h1>DLC e payload acima de 8 bytes</h1>
+        <p class="lead">No CAN FD, o DLC continua sendo um código de 4 bits, mas não representa diretamente o número de bytes para todos os valores. A partir do DLC 9, cada código mapeia para um comprimento maior específico, até o máximo de 64 bytes.</p>
+        <span class="tag">16 códigos · 0 a 64 bytes · mapeamento não linear</span>
+    </header>
+
+    <section aria-labelledby="concept-title">
+        <h2 id="concept-title">DLC é código; comprimento é quantidade de bytes</h2>
+        <div class="panel">
+            <p>O campo DLC (<em>Data Length Code</em>) tem quatro bits e pode representar 16 códigos, de 0 a 15. No CAN clássico, o payload é limitado a 8 bytes. No CAN FD, os códigos 0–8 continuam correspondendo diretamente a 0–8 bytes; os códigos 9–15 selecionam comprimentos maiores tabelados.</p>
+            <div class="callout"><strong>Não faça conversão direta depois de 8:</strong> DLC 9 significa 12 bytes, não 9; DLC 15 significa 64 bytes, não 15.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="mapping-title">
+        <h2 id="mapping-title">Tabela completa de mapeamento do DLC CAN FD</h2>
+        <div class="panel">
+            <table class="map">
+                <thead><tr><th>Código DLC</th><th>Comprimento do payload</th><th>Código DLC</th><th>Comprimento do payload</th></tr></thead>
+                <tbody>
+                    <tr><td>0</td><td>0 bytes</td><td>8</td><td>8 bytes</td></tr>
+                    <tr><td>1</td><td>1 byte</td><td>9</td><td>12 bytes</td></tr>
+                    <tr><td>2</td><td>2 bytes</td><td>10</td><td>16 bytes</td></tr>
+                    <tr><td>3</td><td>3 bytes</td><td>11</td><td>20 bytes</td></tr>
+                    <tr><td>4</td><td>4 bytes</td><td>12</td><td>24 bytes</td></tr>
+                    <tr><td>5</td><td>5 bytes</td><td>13</td><td>32 bytes</td></tr>
+                    <tr><td>6</td><td>6 bytes</td><td>14</td><td>48 bytes</td></tr>
+                    <tr><td>7</td><td>7 bytes</td><td>15</td><td>64 bytes</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Os comprimentos possíveis no payload FD são 0–8, 12, 16, 20, 24, 32, 48 e 64 bytes. Os comprimentos de 9, 10, 11, 13–15, 17–19 e 25–31 bytes não têm códigos DLC próprios no barramento CAN FD.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="read-title">
+        <h2 id="read-title">Como interpretar os códigos maiores que 8</h2>
+        <div class="panel">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Leia o código DLC.</strong> Ele é um valor entre 0 e 15 indicado pelo campo de quatro bits.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Consulte o mapeamento FD.</strong> Por exemplo, código 9 corresponde a 12 bytes; código 13 corresponde a 32 bytes.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Leia essa quantidade de bytes do payload.</strong> DLC 9 significa que há 12 bytes válidos no frame. Os bytes restantes de um buffer de 64 posições não fazem parte daquele payload.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>Interprete os bytes conforme a aplicação.</strong> O DLC define apenas o comprimento, não o significado, a escala ou a ordem dos sinais.</p></div>
+            </div>
+            <div class="grid">
+                <article class="card blue">
+                    <h3>DLC 9</h3>
+                    <p>O nibble enviado é <code>1001</code> (decimal 9), mas o frame transporta <strong>12 bytes</strong>.</p>
+                </article>
+                <article class="card orange">
+                    <h3>DLC 15</h3>
+                    <p>O nibble enviado é <code>1111</code> (decimal 15), mas o frame transporta <strong>64 bytes</strong>.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="examples-title">
+        <h2 id="examples-title">Exemplos de comprimento</h2>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Payload desejado</th><th>Código DLC</th><th>Bytes efetivamente válidos</th><th>Observação</th></tr></thead>
+                <tbody>
+                    <tr><td>8 bytes</td><td>8</td><td>8</td><td>Mesmo comprimento máximo do CAN clássico.</td></tr>
+                    <tr><td>12 bytes</td><td>9</td><td>12</td><td>Primeiro comprimento CAN FD acima de 8.</td></tr>
+                    <tr><td>16 bytes</td><td>10</td><td>16</td><td>O código 10 não significa 10 bytes.</td></tr>
+                    <tr><td>32 bytes</td><td>13</td><td>32</td><td>Útil para payloads maiores sem chegar a 64.</td></tr>
+                    <tr><td>64 bytes</td><td>15</td><td>64</td><td>Comprimento máximo do CAN FD.</td></tr>
+                </tbody>
+            </table>
+            <div class="example">
+                <pre>CAN FD · DLC 9 · payload de 12 bytes
+Byte 0 ... Byte 11: válidos
+Byte 12 ... Byte 63: não fazem parte deste frame</pre>
+                <p>O buffer de software pode ter capacidade para 64 bytes; o comprimento deste frame específico continua sendo 12 bytes.</p>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="software-title">
+        <h2 id="software-title">DLC no barramento e comprimento nas APIs</h2>
+        <div class="panel">
+            <p>O campo transmitido no frame é o código DLC. Muitas APIs de software, incluindo a estrutura <code>CanFdFrame</code> deste projeto, expõem o comprimento em <strong>bytes</strong> por meio de <code>len</code>, não o nibble DLC bruto.</p>
+            <div class="example">
+                <pre>const uint8_t payload[] = {
+    0x10, 0x20, 0x30, 0x40, 0x50, 0x60,
+    0x70, 0x80, 0x90, 0xA0, 0xB0, 0xC0
+};
+
+// 12 bytes de payload; no fio, corresponde ao DLC 9.
+bus.sendFrame(0x123, payload, 12);</pre>
+                <p>O controlador ou a camada SocketCAN traduz o comprimento em bytes para a codificação DLC do frame CAN FD. A aplicação deve seguir os comprimentos suportados pela interface e pelo protocolo.</p>
+            </div>
+            <div class="callout"><strong>O que não confundir:</strong> FDF identifica o formato CAN FD; BRS controla a troca de bitrate; DLC codifica o comprimento. BRS não altera o mapeamento do DLC.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="compare-title">
+        <h2 id="compare-title">CAN clássico, CAN FD e ferramentas de captura</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>CAN clássico</h3>
+                <p>Payload máximo de 8 bytes. Os códigos 9–15 não permitem transportar payloads maiores que 8 bytes em um frame clássico.</p>
+            </article>
+            <article class="card blue">
+                <h3>CAN FD</h3>
+                <p>Payload máximo de 64 bytes, com os códigos DLC 9–15 mapeados para comprimentos específicos.</p>
+            </article>
+            <article class="card purple">
+                <h3>Logs e APIs</h3>
+                <p>Uma ferramenta pode exibir o comprimento em bytes, enquanto a especificação define o código DLC no fio. Confira a convenção de cada saída.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <p>Este projeto armazena o comprimento em bytes no campo <code>CanFdFrame.len</code>. Para uma explicação completa dos campos FDF, BRS e ESI, consulte <a href="12.%20estrutura-frame-canfd.html">Estrutura do frame CAN FD</a>.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>O mapeamento desta página é específico do CAN FD. Para payloads CAN clássicos de 0 a 8 bytes, consulte o guia de <a href="5.%20dlc-payload-can.html">DLC e payload CAN</a>.</p>
+    </footer>
+</main>
+</body>
+</html>

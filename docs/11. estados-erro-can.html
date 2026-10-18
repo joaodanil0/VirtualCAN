@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Como os controladores CAN evoluem entre Error Active, Error Passive e Bus Off em resposta a erros repetidos, usando TEC e REC.">
+    <title>Error Active, Error Passive e Bus Off no CAN</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --red: #a53e3e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 900px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 870px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.red { border-top-color: var(--red); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .72rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .state-flow { display: grid; grid-template-columns: 1fr 70px 1fr 70px 1fr; gap: 10px; align-items: center; margin-top: 20px; }
+        .state { padding: 18px 12px; border: 1px solid var(--line); border-top: 5px solid var(--teal); background: #fff; text-align: center; }
+        .state.passive { border-top-color: var(--orange); }
+        .state.off { border-top-color: var(--red); }
+        .state strong { display: block; font: 700 1rem "Trebuchet MS", sans-serif; }
+        .state small { display: block; margin-top: 5px; color: var(--muted); }
+        .transition { color: var(--muted); text-align: center; font: 700 1.35rem "Trebuchet MS", sans-serif; }
+        .transition small { display: block; font: .68rem/1.35 "Trebuchet MS", sans-serif; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 800px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .state-flow { grid-template-columns: 1fr; }
+            .transition { transform: rotate(90deg); }
+            .transition small { transform: rotate(-90deg); }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Confinamento de erros · Estado por controlador</div>
+        <h1>Error Active, Error Passive e Bus Off</h1>
+        <p class="lead">Um controlador CAN acompanha erros de transmissão e recepção usando contadores internos. Se os problemas se repetem, o nó passa de Error Active para Error Passive e, quando há falhas persistentes de transmissão, pode chegar a Bus Off para deixar de perturbar a rede.</p>
+        <span class="tag">TEC · REC · recuperação e isolamento</span>
+    </header>
+
+    <section aria-labelledby="confinement-title">
+        <h2 id="confinement-title">Por que existem estados de erro?</h2>
+        <div class="panel">
+            <p>Erros ocasionais podem acontecer em uma rede real. O CAN usa regras de <em>error confinement</em> para que um nó com problemas repetidos reduza seu impacto e, se continuar falhando ao transmitir, seja isolado do barramento.</p>
+            <p>Os estados pertencem a cada controlador, não ao barramento inteiro. Em uma mesma rede, um nó pode estar Error Active, outro Error Passive e um terceiro Bus Off.</p>
+            <div class="state-flow" role="img" aria-label="Estado Error Active passa a Error Passive quando TEC ou REC chega a 128; Bus Off ocorre se TEC chega a 256. O retorno de Error Passive a Active ocorre quando os contadores caem abaixo de 128.">
+                <div class="state">
+                    <strong>Error Active</strong>
+                    <small>TEC &lt; 128 e REC &lt; 128</small>
+                </div>
+                <div class="transition">→<small>TEC ou REC ≥ 128</small></div>
+                <div class="state passive">
+                    <strong>Error Passive</strong>
+                    <small>TEC ou REC ≥ 128</small>
+                </div>
+                <div class="transition">→<small>TEC ≥ 256</small></div>
+                <div class="state off">
+                    <strong>Bus Off</strong>
+                    <small>transmissor isolado</small>
+                </div>
+            </div>
+            <p class="caption">A passagem de Error Passive de volta a Error Active ocorre quando ambos os contadores ficam abaixo de 128, conforme as regras do CAN. A condição de Bus Off depende do contador de transmissão, TEC.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="counters-title">
+        <h2 id="counters-title">TEC e REC: o que o controlador acompanha</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>TEC — Transmit Error Counter</h3>
+                <p>Registra a condição de erros associados à transmissão do nó. Se o controlador transmite repetidamente frames com problemas, o TEC pode aumentar e levar o nó a Error Passive ou Bus Off.</p>
+            </article>
+            <article class="card orange">
+                <h3>REC — Receive Error Counter</h3>
+                <p>Registra a condição de erros observados durante a recepção. Um REC elevado pode tornar o nó Error Passive, mas o Bus Off é acionado pelo TEC, não apenas por falhas de recepção.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <p>Os contadores são atualizados por regras específicas que consideram o tipo de erro, se o nó transmitia ou recebia e outros detalhes do protocolo. Não se deve interpretá-los simplesmente como “um ponto por erro”. Transmissões e recepções bem-sucedidas podem reduzir os contadores nos casos definidos pelo padrão.</p>
+            <div class="callout"><strong>Limiares principais:</strong> Error Passive quando TEC ou REC chega a 128; Bus Off quando TEC chega a 256. Error Active corresponde a ambos abaixo de 128.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="states-title">
+        <h2 id="states-title">Como cada estado reage</h2>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Estado</th><th>Participação na rede</th><th>Como sinaliza um erro</th><th>Efeito das falhas repetidas</th></tr></thead>
+                <tbody>
+                    <tr><td>Error Active</td><td>Transmite e recebe normalmente.</td><td>Usa uma error flag ativa, com seis bits dominantes, para tornar o erro visível aos outros nós.</td><td>Os contadores são atualizados; ao alcançar o limiar de 128, o nó passa a Error Passive.</td></tr>
+                    <tr><td>Error Passive</td><td>Continua podendo transmitir e receber, mas sob restrições; se foi transmissor, respeita o intervalo de suspensão de transmissão antes de iniciar outro frame.</td><td>Usa uma error flag passiva, com seis bits recessivos. Ela não força o barramento para dominante e pode não interromper uma flag ativa de outro nó.</td><td>Se o TEC continuar subindo até 256, o nó entra em Bus Off. Se ambos os contadores caírem abaixo de 128, volta a Error Active.</td></tr>
+                    <tr><td>Bus Off</td><td>O controlador deixa de transmitir no barramento.</td><td>Não envia frames nem error flags enquanto estiver isolado.</td><td>Permanece isolado até cumprir a recuperação prevista e/ou a ação requerida pelo controlador ou software.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Uma flag ativa tem bits dominantes; uma flag passiva tem bits recessivos. O error frame também contém um delimitador de erro recessivo, mas não carrega ID ou payload de aplicação.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="scenarios-title">
+        <h2 id="scenarios-title">Exemplos de evolução após erros repetidos</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>Problemas ao transmitir</h3>
+                <p>Um nó tenta transmitir, mas um problema como bitrate incompatível ou falha elétrica provoca erros de bit repetidos. Esses erros de transmissão elevam o TEC conforme as regras do protocolo. Ao atingir 128, o nó fica Error Passive; se erros que continuam contando para o TEC o levarem a 256, fica Bus Off.</p>
+            </article>
+            <article class="card purple">
+                <h3>Problemas apenas ao receber</h3>
+                <p>Uma instalação ruidosa pode fazer um nó detectar repetidamente erros em frames recebidos e elevar o REC. Ao atingir 128, ele pode ficar Error Passive. REC alto, por si só, não leva o nó a Bus Off.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Erro isolado:</strong> o controlador sinaliza o erro e atualiza o contador correspondente; o nó permanece no estado atual se os limiares não forem alcançados.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Falhas se acumulam:</strong> quando TEC ou REC chega a 128, o nó passa a Error Passive e reduz o efeito das próprias flags de erro sobre o barramento.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Transmissão continua falhando:</strong> se o TEC alcança 256, o controlador entra em Bus Off e deixa de transmitir.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>Rede estabiliza:</strong> sucessos podem reduzir os contadores enquanto o nó participa. Um nó Bus Off segue o procedimento de recuperação do protocolo, do driver e do controlador antes de voltar a transmitir.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="recovery-title">
+        <h2 id="recovery-title">Recuperação de Bus Off</h2>
+        <div class="panel">
+            <p>A regra de recuperação CAN prevê que o nó observe 128 ocorrências de 11 bits recessivos consecutivos antes de voltar ao estado ativo. Esse intervalo verifica que o barramento permaneceu livre em várias oportunidades.</p>
+            <p>Na prática, a política de recuperação varia: alguns controladores ou drivers recuperam automaticamente; outros exigem configuração ou uma solicitação explícita do software. Consulte a documentação da interface e do controlador antes de reiniciar um nó Bus Off.</p>
+            <div class="callout"><strong>Não confunda recuperação com correção da causa:</strong> reiniciar o controlador pode recolocá-lo na rede, mas não corrige curto-circuito, bitrate incorreto, terminação defeituosa, transceptor danificado ou outro problema físico que provocou os erros.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="diagnostics-title">
+        <h2 id="diagnostics-title">Diagnóstico e limites de simulação</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>Investigue a origem</h3>
+                <p>Verifique cabos e conectores, terminação, aterramento, bitrate, transceptores e os nós que deixam de responder. Relacione o estado da interface aos contadores e às mensagens de erro reportadas pelo driver.</p>
+            </article>
+            <article class="card orange">
+                <h3>O que vcan não testa</h3>
+                <p><code>vcan</code> é útil para validar software SocketCAN, mas não reproduz ruído, falhas elétricas, arbitragem no fio nem a progressão real de TEC/REC de um controlador físico.</p>
+            </article>
+        </div>
+        <div class="callout"><strong>Ferramentas:</strong> em interfaces CAN físicas, o estado e as estatísticas reportados pelo kernel/driver podem ajudar no diagnóstico. <code>candump</code>, sozinho, não explica por que um controlador entrou em Error Passive ou Bus Off.</div>
+    </section>
+
+    <footer>
+        <p>Para os tipos de erro que atualizam esses contadores, consulte <a href="10.%20ack-erros-can.html">ACK e detecção de erros</a>. Os valores e as regras resumidos aqui descrevem o confinamento de erros CAN; consulte a especificação e o manual do controlador para detalhes de cada implementação.</p>
+    </footer>
+</main>
+</body>
+</html>

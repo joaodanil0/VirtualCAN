@@ -278,6 +278,7 @@ write(socketFd_, &amp;frame, CANFD_MTU);</pre>
     length,
     CAN_FD_BITRATE_SWITCH);</pre>
         <div class="callout"><strong>Limite do vcan:</strong> a interface virtual testa frames e payloads, mas não possui temporização física nem bitrate real. BRS deve ser validado em hardware CAN FD.</div>
+        <p class="caption">Para o detalhamento dos campos <code>FDF</code>, <code>BRS</code> e <code>ESI</code>, consulte <a href="12.%20estrutura-frame-canfd.html">Estrutura do frame CAN FD</a>.</p>
     </section>
 
     <section>
@@ -328,6 +329,7 @@ setsockopt(
                 <tr><td><code>canfd_tests</code></td><td><code>vcanfd0</code></td><td>IDs de 29 bits, payload de 64 bytes, filtros estendidos e ECU FD.</td></tr>
             </tbody>
         </table>
+        <p class="caption">Para experimentar manualmente com <code>candump</code> e <code>cansend</code>, consulte o <a href="16.%20laboratorio-canfd-vcan.html">laboratório CAN FD com vcan</a>.</p>
         <pre>ctest --test-dir build --output-on-failure
 ctest --test-dir build -R canfd_tests --output-on-failure</pre>
     </section>

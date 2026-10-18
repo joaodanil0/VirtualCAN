@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Como o CRC-15 do CAN clássico protege a integridade dos frames, como o receptor verifica a sequência e o que ocorre quando há divergência.">
+    <title>CRC no CAN: verificação de integridade</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1120px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 880px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 850px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .73rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        .compare { margin-top: 18px; padding: 18px; background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .compare pre { margin: 0; color: var(--ink); font: .9rem/1.7 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .compare p { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Confiabilidade · Integridade dos dados</div>
+        <h1>CRC no CAN</h1>
+        <p class="lead">O CRC é uma verificação matemática que ajuda o receptor a detectar alterações acidentais nos bits de um frame durante a transmissão. Esta página explica como o CAN clássico calcula e confere essa sequência, e o que acontece quando os resultados não coincidem.</p>
+        <span class="tag">CRC-15 · detecção de erro · CAN clássico</span>
+    </header>
+
+    <section aria-labelledby="purpose-title">
+        <h2 id="purpose-title">Para que serve o CRC?</h2>
+        <div class="panel">
+            <p>Ruído elétrico, falhas de conexão ou outros problemas podem alterar bits enquanto um frame percorre o barramento. O transmissor calcula um valor de verificação a partir dos campos lógicos do frame e envia esse valor junto com a mensagem. Cada receptor faz o mesmo cálculo a partir do que recebeu e compara os resultados.</p>
+            <div class="grid">
+                <article class="card">
+                    <h3>Resultados iguais</h3>
+                    <p>O valor recebido coincide com o calculado localmente. A verificação CRC passou; o frame ainda precisa passar pelas outras verificações do protocolo.</p>
+                </article>
+                <article class="card orange">
+                    <h3>Resultados diferentes</h3>
+                    <p>O receptor detecta uma inconsistência de integridade e considera o frame inválido. O CRC detecta erros; não reconstrói nem corrige os dados corrompidos.</p>
+                </article>
+            </div>
+            <div class="callout"><strong>Verificação probabilística, não garantia absoluta:</strong> um CRC detecta muitas classes de erros de transmissão, mas não é autenticação e não torna impossível que uma corrupção específica passe despercebida.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="field-title">
+        <h2 id="field-title">O campo CRC no CAN clássico</h2>
+        <div class="panel">
+            <p>No CAN clássico, o campo CRC é composto por uma <strong>sequência CRC de 15 bits</strong> seguida de um <strong>delimitador CRC recessivo</strong> de 1 bit. A sequência é calculada sobre os bits lógicos relevantes do frame, desde o SOF até o fim do campo de dados (ou do campo anterior ao payload, quando não há dados). O próprio CRC e os campos posteriores, como ACK e EOF, não entram nesse cálculo.</p>
+            <p>O CAN clássico usa o CRC-15/CAN, com polinômio gerador <code>0x4599</code>, equivalente a <code>x^15 + x^14 + x^10 + x^8 + x^7 + x^4 + x^3 + 1</code>. O hardware CAN normalmente realiza esse cálculo; o código da aplicação fornece o ID e os dados e não precisa montar esses 15 bits manualmente.</p>
+            <table>
+                <thead><tr><th>Parte</th><th>O que representa</th><th>Participa da comparação CRC?</th></tr></thead>
+                <tbody>
+                    <tr><td>SOF, arbitragem, controle e dados</td><td>Campos lógicos transmitidos antes da sequência CRC.</td><td>Sim; são a entrada protegida pelo cálculo.</td></tr>
+                    <tr><td>Bits de stuffing</td><td>Bits complementares inseridos no fluxo para manter a sincronização.</td><td>O receptor remove os bits de stuffing antes de verificar os campos lógicos.</td></tr>
+                    <tr><td>Sequência CRC</td><td>O valor de verificação de 15 bits enviado pelo transmissor.</td><td>É comparada com o valor calculado pelo receptor.</td></tr>
+                    <tr><td>Delimitador CRC</td><td>Um bit recessivo que separa CRC e ACK.</td><td>Não; é um delimitador de campo.</td></tr>
+                    <tr><td>ACK e EOF</td><td>Confirmação de recepção no barramento e encerramento do frame.</td><td>Não fazem parte dos dados de entrada do CRC.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">A descrição de stuffing e de campos está detalhada em <a href="8.%20bit-stuffing-can.html">Bit stuffing no CAN</a> e em <a href="3.%20can-frames-data-rtr-ack.html">Frames CAN: Data, RTR e ACK</a>.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="receiver-title">
+        <h2 id="receiver-title">O que o receptor faz</h2>
+        <div class="panel">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Recebe os bits do frame.</strong> O controlador CAN observa os campos transmitidos e remove bits de stuffing conforme a regra do protocolo.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Calcula o CRC esperado.</strong> A partir dos campos lógicos protegidos que recebeu, o controlador executa o cálculo CRC-15/CAN.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Compara os valores.</strong> Compara o CRC esperado com a sequência de 15 bits recebida no campo CRC.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>Aceita ou sinaliza erro.</strong> Se coincidem, o frame pode continuar pelas verificações restantes. Se diferem, o receptor sinaliza erro conforme o estado de erro do nó; o frame não é aceito como válido.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="example-title">
+        <h2 id="example-title">Exemplo: um bit dos dados é alterado</h2>
+        <div class="panel">
+            <p>Considere um Data Frame clássico com ID <code>0x123</code>, DLC 3 e payload <code>11 22 33</code>. O transmissor calcula a sequência CRC correspondente aos campos do frame e a envia. Se um bit do payload for alterado no caminho, o receptor calcula o CRC usando os bits recebidos e obtém outro resultado.</p>
+            <div class="compare">
+                <pre>Transmissor: payload recebido como enviado = 11 22 33  → CRC enviado = C
+Barramento:  um bit de dado se altera
+Receptor:    payload observado             = 11 20 33  → CRC calculado = C'
+Comparação:  C' ≠ C                         → erro de CRC</pre>
+                <p><code>C</code> e <code>C'</code> representam valores CRC simbólicos. Os valores exatos dependem de todos os bits protegidos do frame; não podem ser deduzidos apenas de um byte isolado.</p>
+            </div>
+            <div class="callout"><strong>Consequência:</strong> o receptor não entrega esse frame como uma mensagem válida. A sinalização de erro informa os nós no barramento de que a transmissão falhou; em condições normais, o transmissor tenta novamente conforme as regras de retransmissão e confinamento de erros do CAN.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="ack-title">
+        <h2 id="ack-title">CRC e ACK respondem a perguntas diferentes</h2>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Verificação</th><th>Pergunta respondida</th><th>O que não garante</th></tr></thead>
+                <tbody>
+                    <tr><td>CRC</td><td>Os bits protegidos recebidos passam pela verificação de integridade?</td><td>Não corrige o frame, não autentica a origem nem prova que a aplicação usou os dados.</td></tr>
+                    <tr><td>ACK</td><td>Ao menos um nó sinalizou recepção válida no nível do protocolo?</td><td>Não prova que uma ECU específica aceitou o ID, interpretou os dados ou realizou uma ação.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Um frame válido precisa passar por verificações como CRC e stuffing antes de ser confirmado. O ACK é um bit separado no frame, não faz parte do valor CRC.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="limits-title">
+        <h2 id="limits-title">Limites e observabilidade</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>Não é criptografia</h3>
+                <p>O CRC detecta corrupção acidental, mas não impede que um agente altere uma mensagem e recalcule um CRC válido. Autenticidade e proteção contra falsificação exigem mecanismos de segurança definidos pela aplicação.</p>
+            </article>
+            <article class="card orange">
+                <h3>O log não exibe a sequência</h3>
+                <p><code>candump</code> mostra frames já decodificados, normalmente sem os 15 bits de CRC. O controlador CAN e a pilha SocketCAN cuidam da validação antes de entregar o frame à aplicação.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <p>Uma interface <code>vcan</code> permite testar o envio e a recepção de frames pela pilha de software Linux, mas não expõe a forma de onda física nem permite observar a sequência CRC transmitida sobre um par CAN real. CAN FD também usa campos e regras de CRC diferentes, incluindo sequências maiores; os detalhes desta página são para CAN clássico.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Para a estrutura completa dos campos, consulte <a href="3.%20can-frames-data-rtr-ack.html">Frames CAN: Data, RTR e ACK</a>. Esta página trata do CRC-15 e da detecção de erros de integridade no CAN clássico.</p>
+    </footer>
+</main>
+</body>
+</html>

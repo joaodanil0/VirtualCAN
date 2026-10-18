@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Guia detalhado de bit stuffing no CAN clássico: por que bits complementares são inseridos, onde a regra se aplica e como o receptor os remove.">
+    <title>Bit stuffing no CAN clássico</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1120px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 880px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 850px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .73rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .bit-example { margin-top: 18px; padding: 20px; background: var(--code); border: 1px solid var(--line); overflow-x: auto; }
+        .bit-line { display: grid; grid-template-columns: 130px max-content; gap: 14px; align-items: center; margin: 9px 0; }
+        .bit-line strong { color: var(--muted); font: 700 .76rem "Trebuchet MS", sans-serif; }
+        .sequence { color: var(--ink); font: 700 1.05rem "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .inserted { padding: 2px 4px; color: #fff; background: var(--orange); }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .bit-line { grid-template-columns: 1fr; gap: 5px; }
+            .sequence { font-size: .9rem; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Integridade do sinal · CAN clássico</div>
+        <h1>Bit stuffing no CAN</h1>
+        <p class="lead">O CAN insere bits complementares no fluxo transmitido para evitar sequências longas sem transições. Este mecanismo, chamado <em>bit stuffing</em>, ajuda os receptores a manter a sincronização enquanto recebem um frame.</p>
+        <span class="tag">Bits inseridos · sincronização · destuffing</span>
+    </header>
+
+    <section aria-labelledby="why-title">
+        <h2 id="why-title">Por que inserir bits?</h2>
+        <div class="panel">
+            <p>O CAN usa codificação NRZ: durante cada tempo de bit, o sinal representa 0 (dominante) ou 1 (recessivo), e pode permanecer no mesmo estado por vários bits consecutivos. O receptor usa transições entre estados para sincronizar seu relógio com a transmissão e amostrar os bits no momento correto.</p>
+            <p>Uma longa sequência de zeros ou de uns não produz transições. Para evitar que o receptor passe tempo demais sem uma referência de sincronização, o transmissor aplica uma regra de stuffing que força uma transição após, no máximo, cinco bits consecutivos iguais.</p>
+            <div class="grid">
+                <article class="card">
+                    <h3>Sem uma sequência longa</h3>
+                    <p>Bits alternados, como <code>010101</code>, já criam transições frequentes no sinal e não precisam de bits inseridos por esta regra.</p>
+                </article>
+                <article class="card orange">
+                    <h3>Com bits repetidos</h3>
+                    <p>Ao encontrar cinco bits consecutivos iguais, o transmissor coloca no fluxo um bit de valor oposto. Esse bit cria uma transição que pode ser usada para ressincronização.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="rule-title">
+        <h2 id="rule-title">A regra do CAN clássico</h2>
+        <div class="panel">
+            <p>Do início do frame (SOF) até o fim da sequência CRC, inclusive, depois de <strong>cinco bits consecutivos do mesmo valor</strong> o transmissor insere um bit complementar:</p>
+            <ul>
+                <li>após cinco zeros consecutivos, insere um 1;</li>
+                <li>após cinco uns consecutivos, insere um 0.</li>
+            </ul>
+            <p>O bit inserido faz parte do fluxo físico transmitido, mas não do conteúdo lógico do frame. Ele não aumenta o DLC nem representa um byte extra de payload.</p>
+            <div class="callout"><strong>A contagem atravessa limites de campos.</strong> A sequência de bits é examinada continuamente dentro da região de stuffing: ela não recomeça no identificador, no DLC, nos dados ou na CRC.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="example-title">
+        <h2 id="example-title">Exemplo: dez zeros no conteúdo lógico</h2>
+        <p class="section-lead">Imagine que uma parte do fluxo lógico contenha dez zeros consecutivos. O transmissor divide a sequência com bits complementares para que o receptor possa acompanhar o sinal.</p>
+        <div class="panel">
+            <div class="bit-example" role="img" aria-label="Dez zeros lógicos são transmitidos como cinco zeros, um bit inserido 1, cinco zeros e outro bit inserido 1">
+                <div class="bit-line"><strong>Bits lógicos</strong><span class="sequence">00000 00000</span></div>
+                <div class="bit-line"><strong>No fio</strong><span class="sequence">00000 <span class="inserted">1*</span> 00000 <span class="inserted">1*</span></span></div>
+            </div>
+            <p class="caption">O asterisco marca um bit inserido, não enviado pela aplicação. Espaços foram adicionados apenas para facilitar a leitura; não representam pausas entre bits.</p>
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p>O transmissor envia os primeiros cinco zeros lógicos.</p></div>
+                <div class="step"><span class="number">2</span><p>Insere um 1, que é o valor complementar de zero e cria uma transição.</p></div>
+                <div class="step"><span class="number">3</span><p>Envia os cinco zeros lógicos restantes e insere outro 1.</p></div>
+                <div class="step"><span class="number">4</span><p>O receptor reconhece e remove os dois bits inseridos. O conteúdo reconstruído continua sendo exatamente dez zeros.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="scope-title">
+        <h2 id="scope-title">Em quais campos há stuffing?</h2>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Parte do frame clássico</th><th>Regra de stuffing dinâmica</th><th>Observação</th></tr></thead>
+                <tbody>
+                    <tr><td>SOF e arbitragem</td><td>Sim</td><td>Inclui SOF, identificador e os campos usados na arbitragem.</td></tr>
+                    <tr><td>Controle e dados</td><td>Sim</td><td>O conteúdo varia; a contagem de bits iguais continua entre os limites desses campos.</td></tr>
+                    <tr><td>Sequência CRC</td><td>Sim</td><td>A região de stuffing inclui os bits da sequência CRC.</td></tr>
+                    <tr><td>Delimitador CRC, ACK, EOF e intermission</td><td>Não</td><td>Esses campos ficam fora da região de stuffing do CAN clássico e seguem suas próprias regras fixas.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section aria-labelledby="receiver-title">
+        <h2 id="receiver-title">Como o receptor remove os bits inseridos</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>Destuffing</h3>
+                <p>Durante a recepção, o controlador acompanha as sequências de bits iguais na região definida. Depois de cinco bits iguais, espera o complemento inserido; reconhece esse bit e o remove antes de entregar os campos lógicos do frame ao restante do protocolo.</p>
+            </article>
+            <article class="card orange">
+                <h3>Detecção de erro</h3>
+                <p>Se o bit que deveria ser complementar estiver ausente ou tiver o valor incorreto, o receptor detecta uma violação de stuffing e sinaliza erro conforme o protocolo CAN.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <h3>Stuffing afeta a duração no fio, não o significado</h3>
+            <p>O número de bits transmitidos pode ser maior do que a contagem obtida somando os tamanhos fixos dos campos. A quantidade depende dos valores dos bits no frame; o receptor remove os bits de stuffing e recupera o identificador, o DLC, os dados e a CRC lógicos.</p>
+            <div class="callout"><strong>Importante:</strong> o payload continua contendo exatamente o número de bytes indicado pelo DLC. Os bits de stuffing são sobrecarga do protocolo no nível de bits, não dados da aplicação.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="tools-title">
+        <h2 id="tools-title">O que aparece em candump e em vcan?</h2>
+        <div class="panel">
+            <p><code>candump</code> mostra frames que já foram decodificados: ID, DLC, flags e bytes do payload. Ele não lista os bits de stuffing individualmente. Uma interface <code>vcan</code> é útil para testar aplicações e ferramentas SocketCAN, mas não expõe uma forma de onda física para inspecionar essas transições.</p>
+            <p>Para examinar o fluxo elétrico de um barramento real, é necessário um analisador CAN ou equipamento de medição compatível. Lembre-se de que CAN FD possui regras de stuffing adicionais/diferentes em partes do frame; esta página descreve o stuffing clássico.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Para uma visão geral dos campos de um frame, consulte <a href="3.%20can-frames-data-rtr-ack.html">Frames CAN: Data, RTR e ACK</a>. Esta página aprofunda somente a inserção e remoção de bits de stuffing no CAN clássico.</p>
+    </footer>
+</main>
+</body>
+</html>

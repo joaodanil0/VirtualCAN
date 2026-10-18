@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Guia de ACK e mecanismos de detecção de erros CAN: erro de bit, stuffing, CRC, formatação, ACK e confinamento de erros.">
+    <title>ACK e detecção de erros no CAN</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --code: #f9fbfa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 900px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 870px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .72rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .ack-flow { display: grid; grid-template-columns: 1fr 90px 1fr 90px 1fr; gap: 10px; align-items: center; margin-top: 18px; }
+        .ack-node { padding: 16px 12px; border: 1px solid var(--line); background: #fff; text-align: center; }
+        .ack-node strong { display: block; color: var(--teal-dark); font-family: "Trebuchet MS", sans-serif; }
+        .ack-node small { color: var(--muted); }
+        .ack-arrow { color: var(--orange-dark); text-align: center; font: 700 1.3rem "Trebuchet MS", sans-serif; }
+        .ack-arrow small { display: block; font: .68rem/1.3 "Trebuchet MS", sans-serif; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .ack-flow { grid-template-columns: 1fr; }
+            .ack-arrow { transform: rotate(90deg); }
+            .ack-arrow small { transform: rotate(-90deg); }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Confiabilidade · Protocolo CAN clássico</div>
+        <h1>ACK e detecção de erros</h1>
+        <p class="lead">O CAN combina confirmação no barramento com várias verificações independentes para detectar falhas durante uma transmissão. Entenda o que o ACK confirma, como funcionam os erros de bit, stuffing, CRC, formatação e ACK, e como os nós reagem.</p>
+        <span class="tag">ACK · error frame · error confinement</span>
+    </header>
+
+    <section aria-labelledby="ack-title">
+        <h2 id="ack-title">O slot ACK: confirmação entre nós</h2>
+        <div class="panel">
+            <p>Durante o slot ACK, o transmissor envia recessivo (1). Um ou mais nós que receberam o frame corretamente podem sobrepor esse bit com dominante (0). O transmissor observa o barramento: dominante significa que ao menos um nó confirmou a recepção no nível do protocolo; recessivo significa que não houve confirmação e o transmissor detecta um erro de ACK.</p>
+            <div class="ack-flow" role="img" aria-label="O transmissor envia recessivo no slot ACK, um receptor válido responde com dominante, e o barramento mostra dominante">
+                <div class="ack-node"><strong>Transmissor</strong><small>envia 1 recessivo</small></div>
+                <div class="ack-arrow">→<small>slot ACK</small></div>
+                <div class="ack-node"><strong>Receptor válido</strong><small>dirige 0 dominante</small></div>
+                <div class="ack-arrow">→<small>nível no barramento</small></div>
+                <div class="ack-node"><strong>Barramento</strong><small>lido como 0</small></div>
+            </div>
+            <div class="callout"><strong>ACK não é resposta de aplicação:</strong> não prova que uma ECU específica era o destino, aceitou o identificador, entendeu os bytes ou executou uma ação. A aplicação pode precisar de uma resposta própria.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="errors-title">
+        <h2 id="errors-title">As cinco verificações de erro do CAN</h2>
+        <p class="section-lead">O protocolo verifica o sinal enquanto o frame é transmitido e recebido. Cada mecanismo procura uma classe diferente de falha.</p>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Tipo de erro</th><th>Quem detecta</th><th>Condição</th><th>O que indica</th></tr></thead>
+                <tbody>
+                    <tr><td>Erro de bit</td><td>Principalmente o transmissor, que monitora o barramento</td><td>O valor lido difere do bit enviado, fora das exceções previstas pelo protocolo.</td><td>O nível observado não correspondeu ao nível que o nó tentou transmitir.</td></tr>
+                    <tr><td>Erro de stuffing</td><td>Receptores</td><td>Na região com stuffing, a sequência viola a regra de inserção do bit complementar após cinco bits iguais.</td><td>O fluxo codificado tem uma sequência de bits ilegal ou corrompida.</td></tr>
+                    <tr><td>Erro de CRC</td><td>Receptores</td><td>O CRC calculado a partir do frame recebido não coincide com a sequência CRC transmitida.</td><td>Os bits protegidos não passaram pela verificação de integridade.</td></tr>
+                    <tr><td>Erro de forma (form error)</td><td>Receptores</td><td>Um campo de formato fixo contém um valor ilegal; por exemplo, um delimitador ou bit de EOF que deveria ser recessivo aparece dominante.</td><td>A estrutura fixa do frame não respeitou o formato definido.</td></tr>
+                    <tr><td>Erro de ACK</td><td>Transmissor</td><td>O transmissor lê recessivo (1) no slot ACK, em vez do dominante (0) de uma confirmação.</td><td>Nenhum nó confirmou a recepção naquele slot; isso pode ocorrer mesmo sem corrupção dos dados.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">O slot ACK é uma exceção importante ao monitoramento de bit: é normal o transmissor enviar recessivo e ler dominante quando um receptor confirma. O bit dominante permitido no slot ACK não é erro de forma.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="bit-error-title">
+        <h2 id="bit-error-title">Detalhes dos mecanismos</h2>
+        <div class="grid">
+            <article class="card">
+                <h3>Bit error</h3>
+                <p>O transmissor compara continuamente o bit que envia com o nível que lê do barramento. Se os valores divergem, detecta erro de bit. Isso ajuda a perceber, por exemplo, interferência que altera um nível lógico durante a transmissão.</p>
+                <p>A regra não trata a arbitragem perdida como falha: um nó que envia recessivo no campo de arbitragem e lê dominante simplesmente cede ao nó de maior prioridade.</p>
+            </article>
+            <article class="card orange">
+                <h3>Stuff error</h3>
+                <p>No CAN clássico, entre SOF e o fim da sequência CRC, após cinco bits iguais o transmissor deve inserir um bit complementar. O receptor detecta erro se a sequência não respeitar essa regra. Delimitadores e EOF ficam fora dessa região de stuffing.</p>
+            </article>
+            <article class="card blue">
+                <h3>CRC error</h3>
+                <p>O receptor remove os bits de stuffing, calcula o CRC esperado e compara com a sequência recebida. Uma divergência invalida o frame. No CAN clássico, a sequência CRC tem 15 bits; CAN FD usa CRC e regras diferentes.</p>
+            </article>
+            <article class="card purple">
+                <h3>Form error</h3>
+                <p>Alguns bits têm valor fixo previsto pelo formato, normalmente recessivo. Um dominante em delimitadores CRC/ACK ou em bits de EOF, por exemplo, viola o formato e é detectado como erro de forma.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <h3>ACK error não diagnostica sozinho a causa</h3>
+            <p>Se o slot ACK fica recessivo, o transmissor sabe que ninguém confirmou aquele frame. Isso não distingue entre um erro de CRC, ausência de outro nó, receptores desligados, incompatibilidade de configuração ou um barramento sem carga de nós receptores. O erro de ACK não significa automaticamente que os dados foram corrompidos.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="exceptions-title">
+        <h2 id="exceptions-title">Quando “enviei 1, li 0” não é erro</h2>
+        <div class="panel">
+            <p>Um nó que envia recessivo (1) e lê dominante (0) normalmente perde a arbitragem. Há também o caso esperado do slot ACK, em que o transmissor envia recessivo e lê dominante por causa da confirmação de um receptor. Esses casos são permitidos e não devem ser sinalizados como erro de bit.</p>
+            <p>Nós em estado error-passive também emitem uma flag de erro passiva recessiva; se outro nó ativo estiver sinalizando erro com bits dominantes, essa sobreposição prevista não deve ser interpretada pelo nó passivo como um erro de bit comum.</p>
+            <div class="callout"><strong>Distinção essencial:</strong> arbitragem escolhe quem transmite; ACK confirma recepção no barramento; error frame anuncia que houve uma falha. São mecanismos diferentes, mesmo que todos usem os mesmos dois estados lógicos.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="response-title">
+        <h2 id="response-title">O que acontece depois que um erro é detectado?</h2>
+        <div class="panel">
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Um nó detecta a violação.</strong> O motivo pode ser bit, stuffing, CRC, forma ou ACK.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>O erro é sinalizado.</strong> Um nó error-active transmite uma error flag ativa de seis bits dominantes; outros nós também podem sinalizar, e as flags podem se sobrepor. Um nó error-passive usa uma flag passiva de seis bits recessivos.</p></div>
+                <div class="step"><span class="number">3</span><p><strong>O frame é descartado como inválido.</strong> Os receptores não o entregam como mensagem válida. A error flag é seguida pelo delimitador de erro, formado por oito bits recessivos.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>O transmissor pode tentar de novo.</strong> Em operação normal, o controlador retransmite o frame conforme sua configuração e o estado de erro, depois que o barramento permite uma nova tentativa.</p></div>
+            </div>
+            <p class="caption">Uma error flag ativa viola deliberadamente padrões normais de bits para que os outros nós percebam a falha. O error frame não carrega o payload original e não deve ser confundido com uma mensagem de aplicação.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="confinement-title">
+        <h2 id="confinement-title">Error confinement: impedir que um nó defeituoso domine a rede</h2>
+        <div class="panel">
+            <p>Cada controlador mantém contadores de erro de transmissão e recepção (TEC e REC). As regras do CAN atualizam esses contadores conforme o tipo de evento e o papel do nó; não são simplesmente um contador de todos os erros observados.</p>
+            <table>
+                <thead><tr><th>Estado</th><th>Condição geral</th><th>Comportamento</th></tr></thead>
+                <tbody>
+                    <tr><td>Error-active</td><td>TEC e REC abaixo de 128</td><td>O nó participa normalmente e pode sinalizar erros com flags ativas dominantes.</td></tr>
+                    <tr><td>Error-passive</td><td>TEC ou REC atinge 128</td><td>O nó continua participando sob restrições e sinaliza com flag passiva recessiva, que não força o barramento dominante.</td></tr>
+                    <tr><td>Bus-off</td><td>TEC atinge 256</td><td>O nó transmissor é isolado da comunicação para não continuar perturbando a rede; a recuperação segue regras do protocolo e do controlador.</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Esses estados são parte do confinamento de erros do CAN. Os detalhes das atualizações dos contadores e da recuperação do bus-off dependem das regras do protocolo e da implementação do controlador.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="observe-title">
+        <h2 id="observe-title">O que uma ferramenta de captura mostra</h2>
+        <div class="grid">
+            <article class="card blue">
+                <h3>Frames de dados</h3>
+                <p><code>candump</code> normalmente apresenta frames já decodificados: ID, flags, DLC e bytes aceitos pela interface. Não mostra cada bit CRC ou o nível do slot ACK como uma forma de onda.</p>
+            </article>
+            <article class="card orange">
+                <h3>Erros e vcan</h3>
+                <p>A visibilidade de error frames depende do controlador, driver e filtros de captura. <code>vcan</code> testa a comunicação pela pilha de software Linux, mas não reproduz erros elétricos nem injeta corrupção física de bits.</p>
+            </article>
+        </div>
+        <div class="callout"><strong>Leitura em conjunto:</strong> o CRC verifica bits protegidos; stuffing e form verificam estrutura; o monitoramento de bit observa a linha durante a transmissão; ACK confirma recepção no barramento. Nenhum desses mecanismos, isoladamente, confirma que a lógica da aplicação executou a operação esperada.</div>
+    </section>
+
+    <footer>
+        <p>Para o comportamento dos contadores e estados do controlador, consulte o <a href="11.%20estados-erro-can.html">guia de Error Active, Error Passive e Bus Off</a>. Para os campos do ACK e CRC, consulte <a href="3.%20can-frames-data-rtr-ack.html">Frames CAN: Data, RTR e ACK</a>, o <a href="9.%20crc-integridade-can.html">guia de CRC</a> e o <a href="8.%20bit-stuffing-can.html">guia de bit stuffing</a>.</p>
+    </footer>
+</main>
+</body>
+</html>

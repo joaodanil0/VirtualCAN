@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Guia detalhado dos identificadores CAN padrão de 11 bits e estendido de 29 bits, com exemplos em hexadecimal.">
+    <title>Identificadores CAN: 11 e 29 bits</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --code: #17252d;
+            --code-ink: #edf4f5;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1120px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 870px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 830px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card p:last-child { margin-bottom: 0; }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 12px 14px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .74rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        .bit-diagram { display: grid; gap: 14px; margin-top: 20px; }
+        .bit-row { display: grid; grid-template-columns: 150px 1fr; gap: 12px; align-items: center; }
+        .bit-label { color: var(--muted); font: 700 .78rem "Trebuchet MS", sans-serif; }
+        .bits { display: flex; min-width: 0; overflow-x: auto; border: 1px solid var(--line); }
+        .bit { display: grid; min-width: 25px; min-height: 44px; flex: 1 0 25px; place-items: center; border-right: 1px solid rgba(255,255,255,.45); color: #fff; background: var(--teal); font: 700 .76rem "DejaVu Sans Mono", Consolas, monospace; }
+        .bit:last-child { border-right: 0; }
+        .bit.ext { background: var(--blue); }
+        .bit.rsv { background: #647780; }
+        .nibble { display: grid; grid-template-columns: repeat(8, minmax(30px, 1fr)); gap: 5px; margin-top: 10px; }
+        .nibble span { padding: 7px 3px; color: var(--teal-dark); background: #e5f1ef; text-align: center; font: 700 .82rem "DejaVu Sans Mono", Consolas, monospace; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .example { margin-top: 17px; padding: 18px; color: var(--code-ink); background: var(--code); border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre-wrap; }
+        .example p { margin: 12px 0 0; color: #cbd8dc; font-size: .9rem; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: white; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 720px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .bit-row { grid-template-columns: 1fr; gap: 7px; }
+            .bit { min-width: 17px; min-height: 38px; font-size: .65rem; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">Redes embarcadas · Identificação de mensagens</div>
+        <h1>Identificadores CAN</h1>
+        <p class="lead">O identificador define que tipo de mensagem está no quadro e participa da arbitragem do barramento. Este guia explica os formatos padrão de 11 bits e estendido de 29 bits, além de como ler IDs escritos em hexadecimal.</p>
+        <span class="tag">11 bits · 29 bits · hexadecimal</span>
+    </header>
+
+    <section aria-labelledby="role-title">
+        <h2 id="role-title">O que o identificador representa</h2>
+        <div class="panel">
+            <p>Em um quadro CAN, o <strong>identificador (ID)</strong> é um campo transmitido no início do quadro. Ele é usado pelos nós para reconhecer mensagens e também determina sua prioridade quando mais de um nó tenta transmitir ao mesmo tempo.</p>
+            <p>Em geral, o ID não é um endereço de origem nem um endereço de destino. Um ID como <code>0x123</code> pode representar, por convenção do sistema, um conjunto de sinais (por exemplo, estado de velocidade); o significado exato depende do protocolo da aplicação. Todos os nós veem o quadro, e filtros locais decidem quais IDs interessam a cada ECU.</p>
+            <div class="callout"><strong>ID menor, prioridade maior:</strong> durante a arbitragem, o bit dominante (0) prevalece sobre o recessivo (1). Assim, o identificador numericamente menor costuma vencer quando os quadros começam juntos, sem destruir o quadro vencedor. Os bits de controle que indicam o formato do quadro também entram na arbitragem em casos específicos.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="formats-title">
+        <h2 id="formats-title">Dois formatos de identificador</h2>
+        <p class="section-lead">A diferença é a quantidade de bits disponíveis para o ID. O formato usado faz parte do quadro e é sinalizado pelo protocolo; escrever mais dígitos hexadecimais, por si só, não converte um quadro em estendido.</p>
+        <div class="grid">
+            <article class="card">
+                <h3>Padrão: 11 bits</h3>
+                <p>Também chamado de <em>standard frame format</em> (SFF, formato padrão). Tem <strong>2<sup>11</sup> = 2.048 valores</strong>, de <code>0x000</code> a <code>0x7FF</code> (0 a 2.047 em decimal). Em logs, costuma aparecer com até três dígitos hexadecimais.</p>
+                <p>Exemplo: <code>0x123</code> cabe no formato padrão. <code>0x800</code> não cabe em 11 bits e não é um ID padrão válido.</p>
+            </article>
+            <article class="card orange">
+                <h3>Estendido: 29 bits</h3>
+                <p>Também chamado de <em>extended frame format</em> ou EFF. Tem <strong>2<sup>29</sup> = 536.870.912 valores</strong>, de <code>0x00000000</code> a <code>0x1FFFFFFF</code> (0 a 536.870.911 em decimal). Em logs, é comum usar até oito dígitos hexadecimais.</p>
+                <p>Os 29 bits são o ID completo. Não existe uma divisão universal em “endereço”, “tipo” ou outros subcampos; isso depende do protocolo da aplicação.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <div class="bit-diagram" role="img" aria-label="Comparação da largura de um identificador padrão com 11 bits e de um estendido com 29 bits, formado pelos 11 bits base mais 18 bits adicionais">
+                <div class="bit-row">
+                    <div class="bit-label">Padrão · 11 bits</div>
+                    <div class="bits">
+                        <span class="bit">ID10</span><span class="bit">ID9</span><span class="bit">ID8</span><span class="bit">ID7</span><span class="bit">ID6</span><span class="bit">ID5</span><span class="bit">ID4</span><span class="bit">ID3</span><span class="bit">ID2</span><span class="bit">ID1</span><span class="bit">ID0</span>
+                    </div>
+                </div>
+                <div class="bit-row">
+                    <div class="bit-label">Estendido · 29 bits</div>
+                    <div class="bits">
+                        <span class="bit">ID28</span><span class="bit">ID27</span><span class="bit">ID26</span><span class="bit">ID25</span><span class="bit">ID24</span><span class="bit">ID23</span><span class="bit">ID22</span><span class="bit">ID21</span><span class="bit">ID20</span><span class="bit">ID19</span><span class="bit">ID18</span><span class="bit ext">ID17</span><span class="bit ext">ID16</span><span class="bit ext">ID15</span><span class="bit ext">ID14</span><span class="bit ext">ID13</span><span class="bit ext">ID12</span><span class="bit ext">ID11</span><span class="bit ext">ID10</span><span class="bit ext">ID9</span><span class="bit ext">ID8</span><span class="bit ext">ID7</span><span class="bit ext">ID6</span><span class="bit ext">ID5</span><span class="bit ext">ID4</span><span class="bit ext">ID3</span><span class="bit ext">ID2</span><span class="bit ext">ID1</span><span class="bit ext">ID0</span>
+                    </div>
+                </div>
+            </div>
+            <p class="caption">No ID estendido, os bits coloridos em azul são os 18 bits adicionais em relação ao campo base de 11 bits. A disposição visual compara a largura, não é uma representação de todos os campos transmitidos no quadro.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="hex-title">
+        <h2 id="hex-title">Como interpretar um ID em hexadecimal</h2>
+        <div class="panel">
+            <p>Hexadecimal é uma forma compacta de escrever números binários: cada dígito hexadecimal representa exatamente quatro bits. Os símbolos vão de <code>0</code> a <code>9</code> e de <code>A</code> a <code>F</code>, onde <code>A</code> vale 10 até <code>F</code>, que vale 15. O prefixo <code>0x</code> indica que o número está em base 16; ele normalmente não faz parte do valor do ID.</p>
+            <div class="grid">
+                <article class="card blue">
+                    <h3>Exemplo de 11 bits: <code>0x123</code></h3>
+                    <p>Expanda os dígitos em grupos de quatro bits: <code>1 = 0001</code>, <code>2 = 0010</code>, <code>3 = 0011</code>. Juntos, são <code>0001 0010 0011</code>. Como o ID padrão tem 11 bits, descarte apenas os zeros à esquerda até chegar a 11 bits: <code>00100100011</code>.</p>
+                    <p>Em decimal: <code>1 × 16² + 2 × 16¹ + 3 × 16⁰ = 256 + 32 + 3 = 291</code>. Portanto, <code>0x123</code> = 291 e é válido no formato padrão.</p>
+                </article>
+                <article class="card orange">
+                    <h3>Exemplo de 29 bits: <code>0x18FF50E5</code></h3>
+                    <p>Converta cada dígito em um grupo de quatro bits: <code>1=0001</code>, <code>8=1000</code>, <code>F=1111</code>, <code>F=1111</code>, <code>5=0101</code>, <code>0=0000</code>, <code>E=1110</code>, <code>5=0101</code>.</p>
+                    <p>O valor decimal é <code>419.385.573</code>. Ele está abaixo do máximo estendido <code>0x1FFFFFFF</code>, então pode ser usado como ID de 29 bits. O número sozinho não revela o significado da mensagem: consulte a especificação da rede.</p>
+                </article>
+            </div>
+            <div class="callout"><strong>Zeros à esquerda:</strong> <code>0x0123</code> e <code>0x123</code> têm o mesmo valor numérico. Alguns programas exibem largura fixa (por exemplo, 3 ou 8 dígitos) para facilitar a distinção visual, mas o formato do quadro deve ser confirmado separadamente.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="read-title">
+        <h2 id="read-title">Leitura prática de um log</h2>
+        <div class="panel">
+            <p>Em uma saída típica de <code>candump</code>, o identificador hexadecimal vem depois da interface e antes do comprimento de dados (DLC):</p>
+            <div class="example">
+                <pre>can0  123       [2]  11 22
+can0  18FF50E5  [4]  01 02 A0 FF</pre>
+                <p>A primeira linha mostra o ID <code>0x123</code>, com 2 bytes de dados. A segunda mostra <code>0x18FF50E5</code> e 4 bytes. A apresentação pode variar conforme a ferramenta e as opções; verifique se o quadro está marcado como padrão ou estendido, em vez de depender somente do número de caracteres exibidos.</p>
+            </div>
+            <div class="steps">
+                <div class="step"><span class="number">1</span><p><strong>Leia o número como hexadecimal.</strong> Se houver prefixo <code>0x</code>, ignore-o para obter o valor; não confunda os dígitos com decimal.</p></div>
+                <div class="step"><span class="number">2</span><p><strong>Confirme o formato.</strong> Compare o valor com <code>0x7FF</code> para saber se cabe no intervalo padrão. O quadro também carrega um indicador de formato (padrão/estendido).</p></div>
+                <div class="step"><span class="number">3</span><p><strong>Consulte o mapa de mensagens.</strong> A especificação da aplicação associa IDs a conteúdo, taxa de envio, sinais, escala, unidades e regras de validade.</p></div>
+                <div class="step"><span class="number">4</span><p><strong>Interprete o payload à parte.</strong> O ID identifica a mensagem; os bytes e sinais são interpretados conforme o protocolo do veículo ou equipamento.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="distinction-title">
+        <h2 id="distinction-title">ID, tipo de quadro e CAN FD não são a mesma coisa</h2>
+        <div class="grid three">
+            <article class="card">
+                <h3>Identificador</h3>
+                <p>É o valor de 11 ou 29 bits usado para identificar a mensagem e participar da arbitragem.</p>
+            </article>
+            <article class="card blue">
+                <h3>Formato do ID</h3>
+                <p>Um campo de controle distingue quadro padrão de estendido. A notação hexadecimal é uma representação do valor, não esse campo de controle.</p>
+            </article>
+            <article class="card orange">
+                <h3>CAN clássico ou FD</h3>
+                <p>CAN FD altera recursos do quadro, como o tamanho possível do payload e a taxa de dados. CAN FD pode usar ID padrão ou estendido; FD não significa automaticamente ID de 29 bits.</p>
+            </article>
+        </div>
+    </section>
+
+    <footer>
+        <p>Os significados dos IDs não são universais. Para decodificar tráfego real, use a documentação ou a base de dados de mensagens (por exemplo, DBC) correspondente ao sistema.</p>
+    </footer>
+</main>
+</body>
+</html>

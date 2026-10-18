@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Estrutura detalhada do frame CAN FD, incluindo FDF, BRS, ESI, RRS, DLC, fase de dados e CRC.">
+    <title>Estrutura do frame CAN FD</title>
+    <style>
+        :root {
+            --ink: #17252d;
+            --muted: #5e7079;
+            --paper: #f2f6f5;
+            --panel: #fff;
+            --line: #d5e1df;
+            --teal: #087f8c;
+            --teal-dark: #075b65;
+            --orange: #cb622d;
+            --orange-dark: #8b3d1c;
+            --blue: #3173a5;
+            --purple: #7057a3;
+            --red: #a53e3e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            color: var(--ink);
+            background: radial-gradient(circle at 85% 0, rgba(8,127,140,.13), transparent 30rem), var(--paper);
+            font-family: Georgia, "Times New Roman", serif;
+            line-height: 1.65;
+        }
+        .page { max-width: 1140px; margin: auto; padding: 28px 22px 68px; }
+        header { max-width: 900px; padding: 48px 0 38px; }
+        .eyebrow, .tag, th, .label { font-family: "Trebuchet MS", sans-serif; text-transform: uppercase; letter-spacing: .08em; }
+        .eyebrow { color: var(--teal-dark); font-size: .76rem; font-weight: 700; }
+        h1, h2, h3 { line-height: 1.12; }
+        h1 { margin: 10px 0 18px; font: 700 clamp(2.5rem, 6vw, 5rem)/.98 "Trebuchet MS", sans-serif; letter-spacing: -.045em; }
+        h2 { margin: 0 0 14px; font: 700 2rem "Trebuchet MS", sans-serif; }
+        h3 { margin: 0 0 9px; color: var(--teal-dark); font: 700 1.16rem "Trebuchet MS", sans-serif; }
+        p { margin: 0 0 16px; }
+        a { color: var(--teal-dark); }
+        .lead, .section-lead { color: var(--muted); font-size: 1.16rem; max-width: 870px; }
+        .tag { display: inline-block; padding: 7px 11px; color: #fff; background: var(--orange); font-size: .72rem; font-weight: 700; }
+        section { margin-top: 48px; }
+        .panel, .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); }
+        .panel { padding: 24px; }
+        .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+        .card { padding: 21px; border-top: 4px solid var(--teal); }
+        .card.orange { border-top-color: var(--orange); }
+        .card.blue { border-top-color: var(--blue); }
+        .card.purple { border-top-color: var(--purple); }
+        .card.red { border-top-color: var(--red); }
+        .card p:last-child { margin-bottom: 0; }
+        .callout { margin-top: 18px; padding: 17px 20px; border-left: 5px solid var(--orange); background: #fff5ee; }
+        .callout strong { color: var(--orange-dark); }
+        .caption { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        code { padding: 2px 5px; color: var(--teal-dark); background: #e5f1ef; font: .9em "DejaVu Sans Mono", Consolas, monospace; }
+        table { width: 100%; margin-top: 18px; border-collapse: collapse; background: #fff; }
+        th, td { padding: 11px 13px; border: 1px solid var(--line); text-align: left; vertical-align: top; }
+        th { color: #fff; background: var(--teal-dark); font-size: .72rem; }
+        td:first-child { color: var(--teal-dark); font-weight: 700; }
+        .frame-scroll { overflow-x: auto; margin-top: 18px; }
+        .frame { display: flex; min-width: 1080px; border: 1px solid var(--line); }
+        .field { display: grid; min-width: 70px; min-height: 88px; flex: 1; align-content: center; justify-items: center; padding: 9px 7px; border-right: 1px solid #fff; color: #fff; text-align: center; }
+        .field:last-child { border-right: 0; }
+        .field strong { font: 700 .8rem "Trebuchet MS", sans-serif; }
+        .field small { margin-top: 5px; font: .69rem/1.35 "DejaVu Sans Mono", Consolas, monospace; }
+        .f-start { background: var(--orange); }
+        .f-id { background: var(--teal); }
+        .f-ctrl { background: var(--blue); }
+        .f-fd { background: var(--purple); }
+        .f-data { background: #51427e; }
+        .f-crc { background: #647780; }
+        .f-ack { background: #9a5b24; }
+        .rate-flow { display: grid; grid-template-columns: 2fr 1fr 3fr 1fr 2fr; gap: 3px; margin-top: 18px; }
+        .rate { padding: 14px 10px; color: #fff; text-align: center; font: 700 .78rem "Trebuchet MS", sans-serif; }
+        .nominal { background: var(--teal); }
+        .data-rate { background: var(--purple); }
+        .rate small { display: block; margin-top: 5px; font: .69rem/1.35 Georgia, serif; }
+        .steps { display: grid; gap: 0; margin-top: 16px; }
+        .step { display: grid; grid-template-columns: 38px 1fr; gap: 14px; padding: 15px 0; border-bottom: 1px solid var(--line); }
+        .step:last-child { border-bottom: 0; }
+        .number { display: grid; place-items: center; width: 32px; height: 32px; color: #fff; background: var(--teal); font: 700 .9rem "Trebuchet MS", sans-serif; }
+        .step p { margin: 0; color: var(--muted); }
+        .example { margin-top: 18px; padding: 18px; color: var(--ink); background: #f9fbfa; border-left: 4px solid var(--orange); overflow-x: auto; }
+        .example pre { margin: 0; font: .9rem/1.65 "DejaVu Sans Mono", Consolas, monospace; white-space: pre; }
+        .example p { margin: 12px 0 0; color: var(--muted); font-size: .92rem; }
+        footer { margin-top: 54px; padding-top: 18px; border-top: 1px solid var(--line); color: var(--muted); font-size: .9rem; }
+        @media (max-width: 760px) {
+            .page { padding-inline: 16px; }
+            .grid, .grid.three { grid-template-columns: 1fr; }
+            .panel { padding: 19px; }
+            .rate-flow { grid-template-columns: 1fr; }
+            th, td { padding: 9px; }
+        }
+    </style>
+</head>
+<body>
+<main class="page">
+    <header>
+        <div class="eyebrow">CAN FD · Formato e fase de dados</div>
+        <h1>Estrutura do frame CAN FD</h1>
+        <p class="lead">Um frame CAN FD mantém os campos básicos de identificação e confirmação do CAN, mas acrescenta indicadores de formato, velocidade e estado do transmissor. Veja como FDF, BRS e ESI definem o frame e a sua transmissão.</p>
+        <span class="tag">FDF · BRS · ESI · até 64 bytes</span>
+    </header>
+
+    <section aria-labelledby="overview-title">
+        <h2 id="overview-title">Visão geral do frame FD padrão</h2>
+        <p class="section-lead">O diagrama mostra a ordem conceitual dos campos de um frame de dados CAN FD com ID padrão de 11 bits. Campos de comprimento variável e regras de stuffing podem alterar o número de bits no fio.</p>
+        <div class="panel">
+            <div class="frame-scroll">
+                <div class="frame" role="img" aria-label="Frame CAN FD padrão: SOF, ID, RRS, IDE, FDF, bit reservado, BRS, ESI, DLC, dados, CRC, ACK e EOF">
+                    <div class="field f-start"><strong>SOF</strong><small>1 bit</small></div>
+                    <div class="field f-id"><strong>ID</strong><small>11 bits</small></div>
+                    <div class="field f-id"><strong>RRS</strong><small>1 bit</small></div>
+                    <div class="field f-id"><strong>IDE</strong><small>1 bit</small></div>
+                    <div class="field f-fd"><strong>FDF</strong><small>1 bit</small></div>
+                    <div class="field f-ctrl"><strong>res</strong><small>1 bit</small></div>
+                    <div class="field f-fd"><strong>BRS</strong><small>1 bit</small></div>
+                    <div class="field f-fd"><strong>ESI</strong><small>1 bit</small></div>
+                    <div class="field f-ctrl"><strong>DLC</strong><small>4 bits</small></div>
+                    <div class="field f-data"><strong>Dados</strong><small>0–64 bytes</small></div>
+                    <div class="field f-crc"><strong>CRC</strong><small>SC + sequência + delim.</small></div>
+                    <div class="field f-ack"><strong>ACK</strong><small>slot + delim.</small></div>
+                    <div class="field f-start"><strong>EOF</strong><small>7 bits</small></div>
+                </div>
+            </div>
+            <p class="caption">Para o formato estendido, a arbitragem contém também SRR, IDE e os 18 bits adicionais do ID. A ordem detalhada dos campos de arbitragem varia conforme o formato de ID; o restante do frame FD mantém o mesmo propósito.</p>
+            <p class="caption">O bloco CRC está resumido no diagrama: o CAN FD inclui informações de contagem/paridade de stuffing e bits fixos próprios desse formato.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="fields-title">
+        <h2 id="fields-title">Campos que identificam e controlam o frame FD</h2>
+        <div class="panel">
+            <table>
+                <thead><tr><th>Campo</th><th>Valor / posição</th><th>Função</th></tr></thead>
+                <tbody>
+                    <tr><td>SOF</td><td>1 bit dominante (0)</td><td>Marca o início do frame e permite sincronização dos nós.</td></tr>
+                    <tr><td>ID e IDE</td><td>ID padrão de 11 bits ou estendido de 29 bits; IDE diferencia o formato</td><td>Identifica a mensagem e participa da arbitragem. CAN FD suporta os dois comprimentos de ID.</td></tr>
+                    <tr><td>RRS</td><td>1 bit dominante (0)</td><td><em>Remote Request Substitution</em> ocupa a posição correspondente ao pedido remoto. CAN FD não suporta Remote Frames; RRS não solicita payload remoto.</td></tr>
+                    <tr><td>FDF</td><td>1 bit recessivo (1)</td><td><em>FD Format</em> indica que o frame segue o formato CAN FD. No frame clássico, a posição correspondente é um bit reservado dominante.</td></tr>
+                    <tr><td>res</td><td>1 bit reservado, transmitido dominante (0)</td><td>Reservado pelo formato; não é um campo de dados da aplicação.</td></tr>
+                    <tr><td>BRS</td><td>Dominante (0): sem troca; recessivo (1): solicita troca</td><td><em>Bit Rate Switch</em> controla se a fase de dados usará um bitrate mais alto, conforme a configuração compartilhada da rede.</td></tr>
+                    <tr><td>ESI</td><td>Dominante (0): transmissor Error Active; recessivo (1): Error Passive</td><td><em>Error State Indicator</em> informa o estado de erro do nó transmissor ao enviar o frame; não sinaliza o resultado do CRC deste frame.</td></tr>
+                    <tr><td>DLC</td><td>4 bits</td><td>Codifica o comprimento dos dados. De 0 a 8, o valor corresponde a bytes; códigos 9–15 representam comprimentos maiores do CAN FD.</td></tr>
+                    <tr><td>Dados</td><td>0 a 64 bytes</td><td>Payload definido pelo protocolo da aplicação.</td></tr>
+                    <tr><td>CRC</td><td>CRC-17 (até 16 bytes) ou CRC-21 (20–64 bytes), informações de stuff count/paridade e delimitador</td><td>Verifica a integridade do frame; o comprimento de CRC depende do tamanho do payload e a codificação FD possui regras próprias de stuffing.</td></tr>
+                    <tr><td>ACK e EOF</td><td>Slot ACK, delimitador e 7 bits EOF</td><td>O ACK confirma recepção válida no barramento; EOF marca o fim do frame.</td></tr>
+                </tbody>
+            </table>
+            <div class="callout"><strong>FDF, BRS e ESI têm funções diferentes:</strong> FDF escolhe o formato CAN FD; BRS escolhe se há troca de bitrate na fase de dados; ESI anuncia o estado de erro do transmissor.</div>
+        </div>
+    </section>
+
+    <section aria-labelledby="brs-title">
+        <h2 id="brs-title">BRS e as fases de bitrate</h2>
+        <div class="panel">
+            <p>A arbitragem ocorre no bitrate nominal. Se BRS for recessivo (1), o transmissor e os receptores com configuração compatível mudam para o bitrate de dados depois do ponto de amostragem do bit BRS. A mudança de volta para o nominal ocorre no delimitador CRC.</p>
+            <div class="rate-flow" role="img" aria-label="Com BRS habilitado, SOF, arbitragem e o bit BRS usam bitrate nominal; ESI, DLC, dados e CRC usam bitrate de dados; delimitador CRC, ACK e EOF retornam ao bitrate nominal">
+                <div class="rate nominal">Bitrate nominal<small>SOF · arbitragem · FDF · res · bit BRS</small></div>
+                <div class="rate data-rate">Bitrate de dados<small>após amostrar BRS</small></div>
+                <div class="rate data-rate">Bitrate de dados<small>ESI · DLC · payload · CRC</small></div>
+                <div class="rate nominal">Retorno<small>no delimitador CRC</small></div>
+                <div class="rate nominal">Bitrate nominal<small>ACK · EOF</small></div>
+            </div>
+            <p class="caption">O desenho separa as fases, não é uma escala de tempo. Com BRS=0, não ocorre troca e o frame inteiro permanece no bitrate nominal; o frame continua sendo CAN FD.</p>
+            <div class="callout"><strong>Configuração é necessária:</strong> o valor de BRS não informa qual é o bitrate mais alto. A taxa de dados deve ser configurada de forma compatível em todos os nós e suportada pela rede física.</div>
+            <p class="caption">Para diferenciar a taxa nominal da taxa de dados e ver um exemplo de configuração, consulte <a href="14.%20taxa-nominal-vs-dados-canfd.html">Taxa nominal e taxa de dados no CAN FD</a>.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="dlc-title">
+        <h2 id="dlc-title">DLC e comprimentos possíveis</h2>
+        <div class="panel">
+            <p>O campo DLC continua tendo 4 bits, mas no CAN FD os valores acima de 8 mapeiam para comprimentos definidos, em vez de representar diretamente 9 a 15 bytes:</p>
+            <table>
+                <thead><tr><th>DLC</th><th>Bytes de payload</th><th>DLC</th><th>Bytes de payload</th></tr></thead>
+                <tbody>
+                    <tr><td>0–8</td><td>0–8 bytes</td><td>9</td><td>12 bytes</td></tr>
+                    <tr><td>10</td><td>16 bytes</td><td>11</td><td>20 bytes</td></tr>
+                    <tr><td>12</td><td>24 bytes</td><td>13</td><td>32 bytes</td></tr>
+                    <tr><td>14</td><td>48 bytes</td><td>15</td><td>64 bytes</td></tr>
+                </tbody>
+            </table>
+            <p class="caption">Os comprimentos CAN FD válidos são 0–8, 12, 16, 20, 24, 32, 48 e 64 bytes. Um DLC 9 significa 12 bytes, não 9. Consulte o <a href="13.%20dlc-canfd-mapeamento.html">guia detalhado do mapeamento DLC</a>.</p>
+        </div>
+    </section>
+
+    <section aria-labelledby="example-title">
+        <h2 id="example-title">Exemplo de leitura de um frame FD</h2>
+        <div class="panel">
+            <p>Considere um frame FD padrão com ID <code>0x123</code>, BRS habilitado e DLC 9:</p>
+            <div class="example">
+                <pre>Formato: FD padrão       FDF = 1
+ID:      0x123 (11 bits)  IDE = 0
+RRS:     0 (dominante)    Remote Frame: não suportado
+BRS:     1 (recessivo)    troca para bitrate de dados
+ESI:     0 (dominante)    transmissor Error Active
+DLC:     9                payload = 12 bytes
+Dados:   10 20 30 40 50 60 70 80 90 A0 B0 C0
+CRC:     CRC-17</pre>
+                <p>Os campos e os dados são um exemplo didático. O controlador calcula e transmite os bits de CRC e de stuffing automaticamente; a aplicação fornece ID, flags e payload.</p>
+            </div>
+            <div class="grid" style="margin-top:16px">
+                <article class="card blue">
+                    <h3>O que o FDF informa?</h3>
+                    <p>Que o formato do frame é CAN FD. O frame usa 12 bytes neste exemplo porque o DLC é 9, não porque FDF habilite BRS.</p>
+                </article>
+                <article class="card orange">
+                    <h3>O que o ESI informa?</h3>
+                    <p>Que o transmissor estava Error Active quando enviou o frame. O estado do receptor pode ser diferente.</p>
+                </article>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="compatibility-title">
+        <h2 id="compatibility-title">Compatibilidade e observação</h2>
+        <div class="grid">
+            <article class="card purple">
+                <h3>Não é um Remote Frame</h3>
+                <p>CAN FD não suporta Remote Frames. Para solicitar dados, uma aplicação FD define uma mensagem de requisição própria, com ID e payload segundo o protocolo do sistema.</p>
+            </article>
+            <article class="card red">
+                <h3>Todos os nós precisam ser compatíveis</h3>
+                <p>Um nó CAN clássico não interpreta um frame FD como um frame de dados clássico válido. Confirme que os nós ativos na rede suportam CAN FD antes de transmitir frames FD.</p>
+            </article>
+        </div>
+        <div class="panel" style="margin-top:16px">
+            <p>Ferramentas como <code>candump</code> mostram o frame já decodificado (ID, flags, DLC e payload), não uma captura dos campos no nível de bits. Uma interface <code>vcan</code> ajuda a testar aplicações SocketCAN, mas não simula a temporização física nem valida a troca de bitrate BRS em hardware.</p>
+            <p class="caption">Para comparar limites e a implementação SocketCAN do projeto, consulte <a href="can-classic-vs-canfd.html">CAN clássico vs CAN FD</a>.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>Esta página descreve a estrutura do CAN FD. Para CRC, tolerância a erros e requisitos de interoperabilidade, consulte <a href="15.%20crc-tolerancia-compatibilidade-canfd.html">CRC e compatibilidade CAN FD</a>. Os campos CRC e stuffing do FD têm regras próprias em relação ao CAN clássico.</p>
+    </footer>
+</main>
+</body>
+</html>
